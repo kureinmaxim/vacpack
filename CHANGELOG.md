@@ -4,6 +4,17 @@ Notable changes to Vacpack. The format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-18
+
+### Changed
+
+- A colorful window in the icon's colors: a drop screen with the app icon and file kinds, file cards with Quick Look thumbnails, savings badges and colored states, kind badges on the settings rows, overall progress and a total of what was saved. Main buttons and the app's accent color use the icon's gradient, in light and dark mode.
+
+### Added
+
+- Drag a finished file out of the window into Mail, Messages or Finder; right-click a file to show or open the result or the original.
+- `scripts/snapshot.sh` renders the window in light and dark for design review (Debug build, no screen recording needed).
+
 ## [0.1.0] - 2026-10-18
 
 The first version: image, video and GIF compression in the app and the `vacpack` command-line tool.

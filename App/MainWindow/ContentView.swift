@@ -2,7 +2,7 @@ import AppKit
 import CompressorKit
 import SwiftUI
 
-/// Stage 1 main window: drop images, pick options, compress, see sizes before and after.
+/// The main window: drop files, pick options, compress, see sizes before and after.
 /// The full window (previews, presets, per-file settings) arrives in stage 7.
 struct ContentView: View {
     @State private var model = CompressionModel()
@@ -11,14 +11,16 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 0) {
             if model.items.isEmpty {
-                emptyState
+                DropZone(isTargeted: isDropTargeted, missingTools: model.missingTools, chooseFiles: chooseFiles)
+                    .accessibilityIdentifier("dropArea")
             } else {
                 FileList(model: model)
             }
-            Divider()
             OptionsBar(model: model)
         }
-        .frame(minWidth: 720, minHeight: 460)
+        .frame(minWidth: 760, minHeight: 540)
+        .background(BrandBackdrop())
+        .tint(Brand.blue)
         .dropDestination(for: URL.self) { urls, _ in
             model.add(urls)
             return true
@@ -26,10 +28,12 @@ struct ContentView: View {
             isDropTargeted = $0
         }
         .overlay {
-            if isDropTargeted {
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.accentColor, lineWidth: 3)
+            // The empty window lights up its own frame; a list gets one around the whole window.
+            if isDropTargeted && !model.items.isEmpty {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(Brand.tile, lineWidth: 3)
                     .padding(6)
+                    .allowsHitTesting(false)
             }
         }
         .onAppear(perform: addFilesFromUITest)
@@ -46,32 +50,9 @@ struct ContentView: View {
             if let paths = environment["VACPACK_UITEST_FILES"] {
                 model.add(paths.split(separator: ":").map { URL(filePath: String($0)) })
             }
+            if environment["VACPACK_UITEST_COMPRESS"] == "1" { model.compress() }
+            WindowSnapshot.runIfRequested { [model = model] in model.isCompressing }
         #endif
-    }
-
-    private var emptyState: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "arrow.down.doc")
-                .font(.system(size: 48, weight: .light))
-                .foregroundStyle(.secondary)
-            Text("Drop images, videos or folders here")
-                .font(.title2)
-            Text("JPEG, PNG, WebP, AVIF, HEIC, TIFF, BMP, DNG, SVG · GIF · MP4, MOV, WebM, MKV, AVI…")
-                .foregroundStyle(.secondary)
-            Button("Choose Files…", action: chooseFiles)
-                .padding(.top, 6)
-            if !model.missingTools.isEmpty {
-                Label(
-                    "Not installed: \(model.missingTools.map(\.rawValue).joined(separator: ", "))",
-                    systemImage: "exclamationmark.triangle"
-                )
-                .foregroundStyle(.orange)
-                .padding(.top, 12)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .contentShape(Rectangle())
-        .accessibilityIdentifier("dropArea")
     }
 
     private func chooseFiles() {
@@ -82,90 +63,13 @@ struct ContentView: View {
     }
 }
 
-private struct FileList: View {
-    let model: CompressionModel
-
-    var body: some View {
-        List(model.items) { item in
-            FileRow(item: item)
-        }
-        .accessibilityIdentifier("fileList")
-    }
-}
-
-private struct FileRow: View {
-    let item: CompressionModel.Item
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(nsImage: NSWorkspace.shared.icon(forFile: item.url.path))
-                .resizable()
-                .frame(width: 28, height: 28)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.url.lastPathComponent)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Text(detail)
-                    .font(.caption)
-                    .foregroundStyle(detailStyle)
-                    .accessibilityIdentifier("fileDetail")
-            }
-            Spacer()
-            status
-        }
-        .padding(.vertical, 2)
-    }
-
-    private var detail: String {
-        let input = bytes(item.inputBytes)
-        switch item.state {
-        case .ready, .queued, .running: return input
-        case .done(.compressed(let result)):
-            let saved = Int((result.savedFraction * 100).rounded())
-            var text = "\(input) → \(bytes(result.outputBytes))  ·  "
-            text += saved >= 0 ? "−\(saved)%" : "+\(-saved)%"
-            if let size = result.pixelSize { text += "  ·  \(size.width)×\(size.height)" }
-            if result.output.pathExtension.lowercased() != item.url.pathExtension.lowercased() {
-                text += "  ·  \(result.output.pathExtension.uppercased())"
-            }
-            return text
-        case .done(.keptOriginal): return "\(input)  ·  would not get smaller — original kept, no new file"
-        case .done(.unsupported): return "Not supported yet"
-        case .done(.failed(_, let message)): return message
-        case .done(.cancelled): return "\(input)  ·  cancelled"
-        }
-    }
-
-    private var detailStyle: Color {
-        if case .done(.failed) = item.state { return .red }
-        return .secondary
-    }
-
-    @ViewBuilder private var status: some View {
-        switch item.state {
-        case .ready: EmptyView()
-        case .queued: Image(systemName: "clock").foregroundStyle(.secondary)
-        case .running(let fraction): ProgressView(value: fraction).frame(width: 80)
-        case .done(.compressed(let result)):
-            Button {
-                NSWorkspace.shared.activateFileViewerSelecting([result.output])
-            } label: {
-                Image(systemName: "magnifyingglass")
-            }
-            .buttonStyle(.borderless)
-            .help("Show in Finder")
-        case .done(.keptOriginal): Image(systemName: "checkmark.circle").foregroundStyle(.secondary)
-        case .done(.failed), .done(.unsupported): Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
-        case .done(.cancelled): Image(systemName: "minus.circle").foregroundStyle(.secondary)
-        }
-    }
-}
-
+/// Settings for the kinds in the list, then the run controls, on a bar at the bottom.
 private struct OptionsBar: View {
     @Bindable var model: CompressionModel
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             if model.hasImages || model.items.isEmpty {
                 ImageOptionsRow(model: model)
             }
@@ -177,27 +81,66 @@ private struct OptionsBar: View {
             }
             HStack(spacing: 14) {
                 Toggle("Remove originals", isOn: $model.output.removeInput)
+                    .help("Move originals to the Trash after their compressed copy is saved")
                 Spacer()
-                if let saved = model.totalSaved {
-                    Text("Saved \(bytes(saved.input - saved.output))")
-                        .foregroundStyle(.secondary)
+                if let progress = model.overallProgress {
+                    GradientProgress(value: progress).frame(width: 140)
+                } else if let saved = model.totalSaved {
+                    savedSummary(saved)
                 }
                 if model.isCompressing {
                     Button("Cancel", action: model.cancel)
+                        .controlSize(.large)
                 } else {
                     Button("Clear", action: model.clear)
+                        .controlSize(.large)
                         .disabled(model.items.isEmpty)
                 }
-                Button("Compress") {
+                Button {
                     if !model.canCompress { model.resetFinished() }
                     model.compress()
+                } label: {
+                    Label("Compress", systemImage: "arrow.down.right.and.arrow.up.left")
+                        .padding(.horizontal, 4)
                 }
+                .buttonStyle(BrandButtonStyle())
                 .keyboardShortcut(.defaultAction)
                 .disabled(model.items.isEmpty || model.isCompressing)
                 .accessibilityIdentifier("compressButton")
             }
         }
-        .padding(12)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.bar)
+        .overlay(alignment: .top) { Divider() }
+    }
+
+    private func savedSummary(_ saved: (input: Int64, output: Int64)) -> some View {
+        let percent = saved.input > 0 ? Int((100 * (1 - Double(saved.output) / Double(saved.input))).rounded()) : 0
+        return HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text("Saved").foregroundStyle(.secondary)
+            Text(bytes(max(0, saved.input - saved.output)))
+                .font(.title3.weight(.bold))
+                .foregroundStyle(Brand.ink(scheme))
+            Text(percent >= 0 ? "−\(percent)%" : "+\(-percent)%")
+                .font(.callout.weight(.semibold).monospacedDigit())
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// The kind's badge and name at the start of each options row.
+private struct KindLabel: View {
+    static let width: CGFloat = 96
+    let kind: FileKind
+
+    var body: some View {
+        HStack(spacing: 7) {
+            KindBadge(kind: kind, size: 20)
+            Text(kind.title).font(.body.weight(.medium))
+        }
+        .frame(width: Self.width, alignment: .leading)
     }
 }
 
@@ -218,7 +161,7 @@ private struct ImageOptionsRow: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            Label("Images", systemImage: "photo").labelStyle(.titleAndIcon).frame(width: 80, alignment: .leading)
+            KindLabel(kind: .image)
             Picker("Quality", selection: $model.imageSettings.quality) {
                 ForEach(QualityLevel.allCases, id: \.self) { Text($0.label).tag($0) }
             }
@@ -297,14 +240,14 @@ private struct VideoOptionsRow: View {
                     .help("VideoToolbox: can be faster on 4K, but visibly lower quality at the same size")
                 Spacer()
             }
-            .padding(.leading, 94)
+            .padding(.leading, KindLabel.width + 14)
         }
         .onChange(of: resolution) { model.videoSettings.resolution = resolution.value }
     }
 
     private var pickers: some View {
         HStack(spacing: 14) {
-            Label("Videos", systemImage: "film").labelStyle(.titleAndIcon).frame(width: 80, alignment: .leading)
+            KindLabel(kind: .video)
             Picker("Quality", selection: $model.videoSettings.quality) {
                 ForEach(QualityLevel.allCases, id: \.self) { Text($0.label).tag($0) }
             }
@@ -350,7 +293,7 @@ private struct GIFOptionsRow: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            Label("GIF", systemImage: "square.stack").labelStyle(.titleAndIcon).frame(width: 80, alignment: .leading)
+            KindLabel(kind: .gif)
             Picker("Quality", selection: $model.gifSettings.quality) {
                 ForEach(QualityLevel.allCases, id: \.self) { Text($0.label).tag($0) }
             }
@@ -387,10 +330,6 @@ private struct GIFOptionsRow: View {
             case .maxWidth: .maxWidth(n)
             }
     }
-}
-
-private func bytes(_ count: Int64) -> String {
-    ByteCountFormatter.string(fromByteCount: count, countStyle: .file)
 }
 
 #Preview {

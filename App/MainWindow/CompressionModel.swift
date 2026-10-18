@@ -38,6 +38,8 @@ final class CompressionModel {
     @ObservationIgnored private var eventTasks: [Task<Void, Never>] = []
     /// Jobs enqueued and not finished yet.
     private var outstanding = 0
+    /// Rows of the current run, for the overall progress; rows finished in an earlier run do not count.
+    private var runItems: Set<Item.ID> = []
 
     init(locator: ToolLocator = ToolLocator()) {
         let pipeline = CompressionPipeline.standard(locator: locator)
@@ -72,6 +74,21 @@ final class CompressionModel {
         }
     }
 
+    /// Share of the current run that is done, 0...1; nil when nothing is compressing.
+    var overallProgress: Double? {
+        guard isCompressing else { return nil }
+        let run = items.filter { runItems.contains($0.id) }
+        guard !run.isEmpty else { return nil }
+        let done = run.reduce(0.0) { sum, item in
+            switch item.state {
+            case .done: sum + 1
+            case .running(let fraction): sum + fraction
+            case .ready, .queued: sum
+            }
+        }
+        return done / Double(run.count)
+    }
+
     var totalSaved: (input: Int64, output: Int64)? {
         let results = items.compactMap { item -> CompressionResult? in
             if case .done(.compressed(let result)) = item.state { result } else { nil }
@@ -93,6 +110,8 @@ final class CompressionModel {
     func compress() {
         let ready = items.indices.filter { items[$0].state == .ready }
         guard !ready.isEmpty else { return }
+        if !isCompressing { runItems.removeAll() }
+        runItems.formUnion(ready.map { items[$0].id })
         // Map jobs to rows before enqueuing, so no early event can miss its row.
         var imageJobs: [Job] = []
         var heavyJobs: [Job] = []
@@ -118,6 +137,7 @@ final class CompressionModel {
         guard !isCompressing else { return }
         items.removeAll()
         itemForJob.removeAll()
+        runItems.removeAll()
     }
 
     /// Lets finished files be compressed again with new settings.

@@ -4,6 +4,12 @@ import SwiftUI
 
 @main
 struct VacpackApp: App {
+    init() {
+        #if DEBUG
+            WindowSnapshot.applyAppearance()
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup("Vacpack") {
             ContentView()

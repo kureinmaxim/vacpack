@@ -67,6 +67,14 @@ swift build --package-path Packages/CompressorKit -c release --product vacpack
 swift format --in-place --recursive App AppTests UITests Packages/CompressorKit/Sources Packages/CompressorKit/Tests
 ```
 
+Посмотреть окно без запуска руками — снимки пустого окна, списка файлов и результатов в светлой и тёмной теме:
+
+```bash
+scripts/snapshot.sh     # → .build/snapshots/*.png
+```
+
+Скрипт собирает Debug и запускает приложение в режиме снимка (`VACPACK_SNAPSHOT`): окно прозрачное, рисует себя в PNG и закрывается, разрешение на запись экрана не нужно. Прокрутки в этом режиме нет, поэтому список и окно в снимке выше обычного.
+
 ## Шаг 3. Проверки
 
 ```bash
