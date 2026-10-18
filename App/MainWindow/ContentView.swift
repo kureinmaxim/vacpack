@@ -40,10 +40,10 @@ struct ContentView: View {
     private func addFilesFromUITest() {
         #if DEBUG
             let environment = ProcessInfo.processInfo.environment
-            if let format = environment["MYCOMPRESSOR_UITEST_VIDEO_FORMAT"].flatMap(VideoFormatChoice.init) {
+            if let format = environment["VACPACK_UITEST_VIDEO_FORMAT"].flatMap(VideoFormatChoice.init) {
                 model.videoSettings.format = format
             }
-            if let paths = environment["MYCOMPRESSOR_UITEST_FILES"] {
+            if let paths = environment["VACPACK_UITEST_FILES"] {
                 model.add(paths.split(separator: ":").map { URL(filePath: String($0)) })
             }
         #endif

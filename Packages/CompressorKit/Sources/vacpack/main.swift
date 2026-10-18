@@ -1,7 +1,7 @@
 import Foundation
 
 let usage = """
-    Usage: mycompressor-cli <command> [options]
+    Usage: vacpack <command> [options]
 
     Commands:
       tools [--json]            Show the external tools the engines use, where they are and their versions

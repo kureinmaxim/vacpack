@@ -62,7 +62,7 @@ public struct ToolLocator: Sendable {
 
     /// Where the release build installs its pinned tools (see ARCHITECTURE D7).
     public static var appToolsDirectory: URL {
-        URL.applicationSupportDirectory.appending(path: "MyCompressor/tools", directoryHint: .isDirectory)
+        URL.applicationSupportDirectory.appending(path: "Vacpack/tools", directoryHint: .isDirectory)
     }
 
     /// The first executable named like the tool in the search directories, or nil.

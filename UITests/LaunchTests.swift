@@ -18,13 +18,13 @@ final class LaunchTests: XCTestCase {
 
     /// Adds several images, compresses them and expects every row to show its result.
     func testCompressesAddedImages() throws {
-        let folder = FileManager.default.temporaryDirectory.appending(path: "MyCompressorUITest-\(UUID().uuidString)")
+        let folder = FileManager.default.temporaryDirectory.appending(path: "VacpackUITest-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: folder) }
         let files = try (1...5).map { try Self.writeJPEG(to: folder.appending(path: "photo\($0).jpg")) }
 
         let app = XCUIApplication()
-        app.launchEnvironment["MYCOMPRESSOR_UITEST_FILES"] = files.map(\.path).joined(separator: ":")
+        app.launchEnvironment["VACPACK_UITEST_FILES"] = files.map(\.path).joined(separator: ":")
         app.launch()
 
         let details = app.descendants(matching: .any).matching(identifier: "fileDetail")
@@ -64,7 +64,7 @@ final class LaunchTests: XCTestCase {
     private func runVideoJob(format: String?, expecting outputName: String) throws {
         let ffmpeg = "/opt/homebrew/bin/ffmpeg"
         try XCTSkipUnless(FileManager.default.isExecutableFile(atPath: ffmpeg), "needs ffmpeg")
-        let folder = FileManager.default.temporaryDirectory.appending(path: "MyCompressorUITest-\(UUID().uuidString)")
+        let folder = FileManager.default.temporaryDirectory.appending(path: "VacpackUITest-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: folder) }
         let clip = folder.appending(path: "clip.mp4")
@@ -79,8 +79,8 @@ final class LaunchTests: XCTestCase {
         XCTAssertEqual(make.terminationStatus, 0)
 
         let app = XCUIApplication()
-        app.launchEnvironment["MYCOMPRESSOR_UITEST_FILES"] = clip.path
-        if let format { app.launchEnvironment["MYCOMPRESSOR_UITEST_VIDEO_FORMAT"] = format }
+        app.launchEnvironment["VACPACK_UITEST_FILES"] = clip.path
+        if let format { app.launchEnvironment["VACPACK_UITEST_VIDEO_FORMAT"] = format }
         app.launch()
         let detail = app.descendants(matching: .any).matching(identifier: "fileDetail").firstMatch
         XCTAssertTrue(detail.waitForExistence(timeout: 10))

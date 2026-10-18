@@ -1,28 +1,62 @@
-# MyCompressor
+# Vacpack
 
-Рабочее название. macOS-приложение для сжатия видео, изображений, GIF, PDF и EPUB — собственная реализация по [docs/SPEC.md](docs/SPEC.md). Устройство — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), этапы — [docs/PLAN.md](docs/PLAN.md).
+Vacpack is a native macOS app and command-line tool that makes images, videos and GIFs smaller, entirely offline. Like vacuum packing: everything the file does not need is pumped out.
 
-## Требования
+> **Status: early development.** Image, video and GIF compression work in the app and the CLI. PDF, EPUB, presets, the notch Drop Zone, folder monitoring and the rest are planned — see [the stage plan](docs/PLAN.md).
 
-- macOS 14+, Xcode 26 (после установки или обновления Xcode один раз: `sudo xcodebuild -runFirstLaunch`)
-- `brew install xcodegen ffmpeg pngquant gifski webp libavif ghostscript`
+## What works today
 
-## Сборка и проверка
+- **Images** — JPEG, PNG, WebP, AVIF, HEIC/HEIF, TIFF, BMP and SVG in (DNG is supported but not yet tested); JPEG, PNG, WebP, AVIF or the same format out. Five quality levels, six resize modes (never upscaling), EXIF orientation applied, transparency kept (or flattened to white for JPEG). EXIF/IPTC/XMP, color profile, print resolution, file dates and Finder tags can be kept.
+- **Videos** — MP4, MOV, WebM, MKV and other containers in; MP4, MOV, WebM or the same container out, or MP3 audio. H.264 or HEVC through VideoToolbox (Apple Silicon) or x264/x265, VP9 + Opus for WebM, transparency kept in WebM and MOV, every audio track kept, resolution presets and frame-rate caps that only ever go down. Falls back to software encoding when the media engine is busy.
+- **GIFs** — compress animated GIFs or turn videos into GIFs with gifski: quality, size and frame rate (10–50 fps), transparency and frame timing preserved.
+- **Safe by default** — a result that is not smaller never replaces the original, originals go to the Trash only after success, and nothing ever leaves your Mac.
+
+## Requirements
+
+- macOS 14 or later, Xcode 26 (after installing or updating Xcode, run `sudo xcodebuild -runFirstLaunch` once)
+- Tools from Homebrew:
 
 ```bash
-scripts/bootstrap.sh   # проверить зависимости, сгенерировать проект и тестовые файлы
-scripts/check.sh       # swift-format, тесты CompressorKit, сборка и тесты приложения
-open MyCompressor.xcodeproj
+brew install xcodegen ffmpeg pngquant gifski webp libavif ghostscript
 ```
 
-Утилита для движков без интерфейса:
+Vacpack runs these tools as separate programs and never links them, so their licenses apply to them alone.
+
+## Build and test
 
 ```bash
-swift run --package-path Packages/CompressorKit mycompressor-cli tools
-swift run --package-path Packages/CompressorKit mycompressor-cli image photos/ --format webp --max-long-edge 2000
-swift run --package-path Packages/CompressorKit mycompressor-cli video clip.mov --format mp4 --resolution 1080p
-swift run --package-path Packages/CompressorKit mycompressor-cli video clip.mov --format gif --gif-fps 15 --gif-max-width 480
-swift run --package-path Packages/CompressorKit mycompressor-cli gif animation.gif --quality good --percent 50
+scripts/bootstrap.sh   # check prerequisites, generate the Xcode project and test inputs
+scripts/check.sh       # swift-format lint, engine tests, app build and tests (--ui adds UI tests)
+open Vacpack.xcodeproj
 ```
 
-`MyCompressor.xcodeproj` генерируется из `project.yml` и в git не хранится.
+`Vacpack.xcodeproj` is generated from `project.yml` with XcodeGen and is not committed.
+
+## Command line
+
+The engines are a Swift package (`Packages/CompressorKit`) with a `vacpack` command:
+
+```bash
+swift run --package-path Packages/CompressorKit vacpack tools
+swift run --package-path Packages/CompressorKit vacpack image photos/ --format webp --max-long-edge 2000
+swift run --package-path Packages/CompressorKit vacpack video clip.mov --format mp4 --resolution 1080p
+swift run --package-path Packages/CompressorKit vacpack video clip.mov --format gif --gif-fps 15 --gif-max-width 480
+swift run --package-path Packages/CompressorKit vacpack gif animation.gif --quality good --percent 50
+```
+
+`image`, `video` and `gif` describe their options with `--help`; every command can print results as `--json`.
+
+## Project documents (in Russian)
+
+- [docs/SPEC.md](docs/SPEC.md) — the feature specification, compiled from public documentation of an existing macOS compressor
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — design decisions and module layout
+- [docs/PLAN.md](docs/PLAN.md) — stages with acceptance criteria
+- [docs/QUALITY.md](docs/QUALITY.md) — encoder parameters per quality level and measurements
+
+Vacpack is an independent implementation written from scratch; it contains no code from other compression apps and is not affiliated with them.
+
+## License
+
+Vacpack is free software: you can redistribute it and/or modify it under the terms of the [GNU General Public License version 3](LICENSE).
+
+The compression tools it runs (FFmpeg, pngquant, gifski, libwebp, libavif, Ghostscript) are installed separately and keep their own licenses.

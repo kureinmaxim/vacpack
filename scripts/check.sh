@@ -20,10 +20,10 @@ step "Generate Xcode project"
 xcodegen generate --quiet
 
 step "App build and tests"
-tests=(-only-testing:MyCompressorTests)
+tests=(-only-testing:VacpackTests)
 $ui && tests=()
 mkdir -p .build
-if ! xcodebuild -project MyCompressor.xcodeproj -scheme MyCompressor -destination 'platform=macOS' \
+if ! xcodebuild -project Vacpack.xcodeproj -scheme Vacpack -destination 'platform=macOS' \
   -derivedDataPath .build/xcode test ${tests[@]+"${tests[@]}"} >.build/xcodebuild.log 2>&1; then
   grep -E 'error:|failed|runFirstLaunch' .build/xcodebuild.log | head -20 >&2
   echo "xcodebuild failed; full log: .build/xcodebuild.log" >&2

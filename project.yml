@@ -1,4 +1,4 @@
-name: MyCompressor
+name: Vacpack
 
 options:
   bundleIdPrefix: xyz.kurein
@@ -24,7 +24,7 @@ packages:
     path: Packages/CompressorKit
 
 targets:
-  MyCompressor:
+  Vacpack:
     type: application
     platform: macOS
     sources:
@@ -35,58 +35,58 @@ targets:
     info:
       path: App/Resources/Info.plist
       properties:
-        CFBundleDisplayName: MyCompressor
+        CFBundleDisplayName: Vacpack
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.utilities
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         NSHumanReadableCopyright: ""
     entitlements:
-      path: App/Resources/MyCompressor.entitlements
+      path: App/Resources/Vacpack.entitlements
       properties:
         # No App Sandbox: external tools and arbitrary folders (ARCHITECTURE D6).
         com.apple.security.app-sandbox: false
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: xyz.kurein.mycompressor
-        PRODUCT_NAME: MyCompressor
+        PRODUCT_BUNDLE_IDENTIFIER: xyz.kurein.vacpack
+        PRODUCT_NAME: Vacpack
         ENABLE_HARDENED_RUNTIME: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: ""
 
-  MyCompressorTests:
+  VacpackTests:
     type: bundle.unit-test
     platform: macOS
     sources:
       - AppTests
     dependencies:
-      - target: MyCompressor
+      - target: Vacpack
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: xyz.kurein.mycompressor.tests
+        PRODUCT_BUNDLE_IDENTIFIER: xyz.kurein.vacpack.tests
         GENERATE_INFOPLIST_FILE: YES
 
-  MyCompressorUITests:
+  VacpackUITests:
     type: bundle.ui-testing
     platform: macOS
     sources:
       - UITests
     dependencies:
-      - target: MyCompressor
+      - target: Vacpack
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: xyz.kurein.mycompressor.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: xyz.kurein.vacpack.uitests
         GENERATE_INFOPLIST_FILE: YES
-        TEST_TARGET_NAME: MyCompressor
+        TEST_TARGET_NAME: Vacpack
 
 schemes:
-  MyCompressor:
+  Vacpack:
     build:
       targets:
-        MyCompressor: all
+        Vacpack: all
     run:
       config: Debug
     test:
       config: Debug
       targets:
-        - MyCompressorTests
-        - MyCompressorUITests
+        - VacpackTests
+        - VacpackUITests

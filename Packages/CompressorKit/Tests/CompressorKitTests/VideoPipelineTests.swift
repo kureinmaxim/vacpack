@@ -21,7 +21,7 @@ enum VideoFixtures {
     /// Reuses clips from an earlier run; otherwise generates them into a scratch folder and
     /// renames it into place, so a half-written cache is never used.
     static func generate() async throws -> Clips {
-        let cache = FileManager.default.temporaryDirectory.appending(path: "MyCompressorVideoFixtures-v\(version)")
+        let cache = FileManager.default.temporaryDirectory.appending(path: "VacpackVideoFixtures-v\(version)")
         if FileManager.default.fileExists(atPath: cache.appending(path: "long.mp4").path) {
             return Clips(directory: cache)
         }

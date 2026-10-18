@@ -16,7 +16,7 @@ let commonOptionsHelp = """
     """
 
 let imageUsage = """
-    Usage: mycompressor-cli image <files|folders>... [options]
+    Usage: vacpack image <files|folders>... [options]
 
     Options:
       --format <f>            same | jpg | png | webp | avif                (default: same)
@@ -28,7 +28,7 @@ let imageUsage = """
     """
 
 let videoUsage = """
-    Usage: mycompressor-cli video <files|folders>... [options]
+    Usage: vacpack video <files|folders>... [options]
 
     Options:
       --format <f>            same | mp4 | webm | mov | gif | mp3           (default: same)
@@ -47,7 +47,7 @@ let videoUsage = """
     """
 
 let gifUsage = """
-    Usage: mycompressor-cli gif <files|folders>... [options]
+    Usage: vacpack gif <files|folders>... [options]
 
     Options:
       --percent <n>           Scale to n% (never upscales)

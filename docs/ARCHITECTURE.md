@@ -2,7 +2,7 @@
 
 Чистая реализация с нуля. Источник требований — только [SPEC.md](SPEC.md) и, позже, замеры оригинала (`docs/REFERENCE.md`). Код Compresto 1.27 не читаем и не копируем: так у собственного кода остаётся свобода выбора лицензии.
 
-Рабочее имя — **MyCompressor**, bundle id `xyz.kurein.mycompressor`, URL-схема `mycompressor://`. Название, иконку и оформление нужно выбрать до релиза (этап 13).
+Имя — **Vacpack** (вакуумная упаковка: из файла выкачивается всё лишнее), bundle id `xyz.kurein.vacpack`, URL-схема `vacpack://`, CLI — `vacpack`. Иконку и визуальный стиль нужно сделать до релиза (этап 13). Лицензия кода — GPL-3.0 ([LICENSE](../LICENSE)).
 
 ## 1. Ключевые решения
 
@@ -10,11 +10,11 @@
 |---|---|---|---|
 | D1 | **macOS 14+**, Swift 6, SwiftUI + AppKit там, где SwiftUI не хватает | `@Observable`, SwiftData/современные API; оригинал поддерживает 13+, но одна лишняя версия ОС стоит дорого | macOS 13 — придётся отказаться от Observation |
 | D2 | Логика в **Swift Package `CompressorKit`**, приложение — тонкая оболочка | `swift test` за секунды без запуска UI; агенты и CI проверяют движки из терминала | всё в одном Xcode-таргете — медленные и хрупкие тесты |
-| D3 | Утилита **`mycompressor-cli`** в том же пакете | каждый движок можно прогнать на корпусе файлов без интерфейса; основа приёмочных тестов | — |
+| D3 | Утилита **`vacpack`** в том же пакете | каждый движок можно прогнать на корпусе файлов без интерфейса; основа приёмочных тестов | — |
 | D4 | Проект Xcode генерируется из **`project.yml` (XcodeGen)**, `.xcodeproj` не хранится в git | текстовый, читаемый конфиг без конфликтов в `project.pbxproj`; XcodeGen уже установлен | Tuist; ручной `.xcodeproj` |
 | D5 | Кодеры — **внешние программы через `Process`**, без линковки | собственный код не наследует GPL/AGPL утилит; любую утилиту можно заменить или обновить отдельно | линковка libav*/libwebp — лицензионные обязательства распространяются на приложение |
 | D6 | **Без App Sandbox**: Developer ID + Hardened Runtime + нотаризация, распространение вне App Store | запуск Homebrew-Ghostscript, произвольные папки вывода, мониторинг любых папок, AppleEvents не нужны; так же делает оригинал | Sandbox + security-scoped bookmarks — несовместимо с внешним `gs` |
-| D7 | Утилиты: в разработке — из Homebrew; в релизе — **установщик с закреплёнными версиями и SHA-256** в `~/Library/Application Support/MyCompressor/tools` | как у оригинала: маленький бандл, обновление утилит без перевыпуска приложения | вложить статические бинарники в бандл (+~100 МБ) |
+| D7 | Утилиты: в разработке — из Homebrew; в релизе — **установщик с закреплёнными версиями и SHA-256** в `~/Library/Application Support/Vacpack/tools` | как у оригинала: маленький бандл, обновление утилит без перевыпуска приложения | вложить статические бинарники в бандл (+~100 МБ) |
 | D8 | Ghostscript **не распространяем**: пользователь ставит его сам, при наличии Homebrew — кнопкой | AGPL; совпадает с поведением из SPEC §5 | — |
 | D9 | История — **SQLite через GRDB**; настройки — `UserDefaults` (Codable); пресеты — JSON-файл | GRDB надёжен и даёт постраничную загрузку (50/100/200/500); пресеты удобно экспортировать | SwiftData — меньше зависимостей, но менее предсказуем |
 | D10 | Локализация — **String Catalogs** (`.xcstrings`), 6 языков из SPEC §16; смена языка через `AppleLanguages` и перезапуск | штатный механизм Xcode | — |
@@ -23,10 +23,10 @@
 ## 2. Модули
 
 ```
-my-compressor/
+vacpack/
 ├── project.yml                 # XcodeGen: таргеты App, AppTests, UITests
 ├── App/                        # SwiftUI + AppKit, без логики сжатия
-│   ├── MyCompressorApp.swift   # @main: WindowGroup, Settings, MenuBarExtra
+│   ├── VacpackApp.swift   # @main: WindowGroup, Settings, MenuBarExtra
 │   ├── MainWindow/             # список/сетка/дерево, боковая панель, пресеты, per-file
 │   ├── Settings/               # вкладки General, Drop Zone, Folder Monitoring, Presets,
 │   │                           #   PDF, AI Renaming, File Management, Appearance, Advanced
@@ -45,7 +45,7 @@ my-compressor/
 │   │   ├── Automation/         # FolderWatcher (FSEvents), ClipboardWatcher, DeepLinkParser
 │   │   ├── History/            # GRDB-хранилище и постраничная выборка
 │   │   └── AIRename/           # протокол + OpenAI и Ollama
-│   ├── Sources/mycompressor-cli/
+│   ├── Sources/vacpack/
 │   └── Tests/CompressorKitTests/  + Fixtures/ (генерируются скриптом, не храним мегабайты)
 ├── scripts/                    # make-fixtures.sh, bootstrap.sh, release.sh
 └── docs/                       # SPEC, ARCHITECTURE, PLAN, QUALITY, REFERENCE

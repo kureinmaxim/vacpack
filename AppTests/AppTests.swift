@@ -1,10 +1,10 @@
 import CompressorKit
 import XCTest
 
-/// Host-app tests: run inside MyCompressor.app, so `Bundle.main` is the app bundle.
+/// Host-app tests: run inside Vacpack.app, so `Bundle.main` is the app bundle.
 final class AppTests: XCTestCase {
     func testBundleIdentity() {
-        XCTAssertEqual(Bundle.main.bundleIdentifier, "xyz.kurein.mycompressor")
+        XCTAssertEqual(Bundle.main.bundleIdentifier, "xyz.kurein.vacpack")
     }
 
     func testAppIsNotSandboxed() {

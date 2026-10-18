@@ -1,9 +1,9 @@
 import SwiftUI
 
 @main
-struct MyCompressorApp: App {
+struct VacpackApp: App {
     var body: some Scene {
-        WindowGroup("MyCompressor") {
+        WindowGroup("Vacpack") {
             ContentView()
         }
         .defaultSize(width: 900, height: 600)

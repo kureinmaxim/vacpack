@@ -6,11 +6,11 @@ let package = Package(
     platforms: [.macOS(.v14)],
     products: [
         .library(name: "CompressorKit", targets: ["CompressorKit"]),
-        .executable(name: "mycompressor-cli", targets: ["mycompressor-cli"]),
+        .executable(name: "vacpack", targets: ["vacpack"]),
     ],
     targets: [
         .target(name: "CompressorKit"),
-        .executableTarget(name: "mycompressor-cli", dependencies: ["CompressorKit"]),
+        .executableTarget(name: "vacpack", dependencies: ["CompressorKit"]),
         .testTarget(name: "CompressorKitTests", dependencies: ["CompressorKit"]),
     ]
 )
