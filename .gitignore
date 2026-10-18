@@ -1,0 +1,17 @@
+# Generated from project.yml by XcodeGen
+*.xcodeproj/
+
+# Build output
+.build/
+DerivedData/
+Packages/*/.build/
+Packages/*/.swiftpm/
+*.xcresult
+
+# Generated test inputs (scripts/make-fixtures.sh)
+Packages/CompressorKit/Tests/Fixtures/generated/
+
+# macOS and Xcode user state
+.DS_Store
+xcuserdata/
+*.xcuserstate
