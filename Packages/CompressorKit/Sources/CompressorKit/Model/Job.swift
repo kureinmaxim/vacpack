@@ -5,17 +5,23 @@ import Foundation
 public struct JobRequest: Sendable, Hashable {
     public var input: URL
     public var image: ImageSettings
+    public var video: VideoSettings
     public var output: OutputPolicy
     public var metadata: MetadataOptions
+    /// App-wide video settings (codec, FPS cap, hardware acceleration, threads).
+    public var videoEncoding: VideoEncodingOptions
 
     public init(
-        input: URL, image: ImageSettings = ImageSettings(), output: OutputPolicy = OutputPolicy(),
-        metadata: MetadataOptions = MetadataOptions()
+        input: URL, image: ImageSettings = ImageSettings(), video: VideoSettings = VideoSettings(),
+        output: OutputPolicy = OutputPolicy(), metadata: MetadataOptions = MetadataOptions(),
+        videoEncoding: VideoEncodingOptions = VideoEncodingOptions()
     ) {
         self.input = input
         self.image = image
+        self.video = video
         self.output = output
         self.metadata = metadata
+        self.videoEncoding = videoEncoding
     }
 }
 

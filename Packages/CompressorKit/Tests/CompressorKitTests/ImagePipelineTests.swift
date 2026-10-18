@@ -286,9 +286,13 @@ struct ImagePipelineTests {
     // MARK: Errors
 
     @Test func reportsUnsupportedKinds() async throws {
-        let video = dir.file("clip.mp4")
-        try Data([0, 1, 2]).write(to: video)
-        #expect(await compress(request(video), trashBin: bin) == .unsupported(input: video, kind: .video))
+        // PDF arrives in stage 4.
+        let pdf = dir.file("doc.pdf")
+        try Data([0, 1, 2]).write(to: pdf)
+        #expect(await compress(request(pdf), trashBin: bin) == .unsupported(input: pdf, kind: .pdf))
+        let unknown = dir.file("notes.txt")
+        try Data([0]).write(to: unknown)
+        #expect(await compress(request(unknown), trashBin: bin) == .unsupported(input: unknown, kind: nil))
     }
 
     @Test func failsCleanlyOnBrokenImage() async throws {

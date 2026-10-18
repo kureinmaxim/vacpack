@@ -8,23 +8,26 @@ public protocol JobProcessing: Sendable {
 /// Detects the file kind, runs the matching engine, applies the "never larger" rule and places the output.
 public struct CompressionPipeline: JobProcessing {
     let image: ImageEngine
+    let video: VideoEngine
     let writer: OutputWriter
 
-    public init(image: ImageEngine, trasher: any FileTrasher = SystemTrasher()) {
+    public init(image: ImageEngine, video: VideoEngine, trasher: any FileTrasher = SystemTrasher()) {
         self.image = image
+        self.video = video
         self.writer = OutputWriter(trasher: trasher)
     }
 
     /// A pipeline with tools found by `ToolLocator`.
     public static func standard(locator: ToolLocator = ToolLocator()) -> CompressionPipeline {
-        CompressionPipeline(image: ImageEngine(tools: ImageTools(locator: locator)))
+        CompressionPipeline(
+            image: ImageEngine(tools: ImageTools(locator: locator)), video: VideoEngine(locator: locator))
     }
 
     public func process(_ request: JobRequest, progress: @escaping @Sendable (Double) -> Void) async -> JobOutcome {
         let input = request.input
         let kind = FileKind.detect(input)
-        // Later stages add video, GIF, PDF and EPUB engines.
-        guard kind == .image else { return .unsupported(input: input, kind: kind) }
+        // Later stages add GIF, PDF and EPUB engines.
+        guard kind == .image || kind == .video else { return .unsupported(input: input, kind: kind) }
 
         var workDirectory: URL?
         defer { if let workDirectory { try? FileManager.default.removeItem(at: workDirectory) } }
@@ -36,20 +39,28 @@ public struct CompressionPipeline: JobProcessing {
                 for: .itemReplacementDirectory, in: .userDomainMask, appropriateFor: directory, create: true)
             workDirectory = work
 
-            let encoded = try await image.encode(
-                input, settings: request.image, metadata: request.metadata, workDirectory: work, progress: progress)
+            let encoded: EncodedFile
+            let quality: QualityLevel
+            if kind == .video {
+                quality = request.video.quality
+                encoded = try await video.encode(
+                    input, settings: request.video, options: request.videoEncoding, workDirectory: work,
+                    progress: progress)
+            } else {
+                quality = request.image.quality
+                encoded = try await image.encode(
+                    input, settings: request.image, metadata: request.metadata, workDirectory: work, progress: progress)
+            }
             try Task.checkCancellation()
 
             let outputBytes = try fileSize(encoded.url)
-            let changedOnRequest = encoded.formatChanged || encoded.resized
-            if outputBytes >= facts.size, !changedOnRequest {
-                return try keepOriginal(request, facts: facts, directory: directory)
+            if outputBytes >= facts.size, !encoded.changedOnRequest {
+                return try keepOriginal(request, facts: facts, directory: directory, quality: quality)
             }
 
-            let tokens = OutputNamer.Tokens(
-                quality: request.image.quality.label, resolution: encoded.pixelSize.description)
+            let tokens = OutputNamer.Tokens(quality: quality.label, resolution: encoded.resolutionLabel)
             let placed = try writer.place(
-                encoded.url, fileExtension: encoded.format.fileExtension, input: input, facts: facts,
+                encoded.url, fileExtension: encoded.fileExtension, input: input, facts: facts,
                 policy: request.output, metadata: request.metadata, tokens: tokens, directory: directory)
             progress(1)
 
@@ -70,12 +81,14 @@ public struct CompressionPipeline: JobProcessing {
     /// SPEC §8: a result that is not smaller never replaces the input. When outputs go to another
     /// folder, the original is copied there so that folder is still complete; the input itself is
     /// left untouched (not trashed) in every case.
-    private func keepOriginal(_ request: JobRequest, facts: FileFacts, directory: URL) throws -> JobOutcome {
+    private func keepOriginal(_ request: JobRequest, facts: FileFacts, directory: URL, quality: QualityLevel) throws
+        -> JobOutcome
+    {
         let input = request.input
         guard directory.standardizedFileURL != input.deletingLastPathComponent().standardizedFileURL else {
             return .keptOriginal(input: input, copiedTo: nil)
         }
-        let tokens = OutputNamer.Tokens(quality: request.image.quality.label)
+        let tokens = OutputNamer.Tokens(quality: quality.label)
         let suffix = OutputNamer.expand(request.output.fileNameFormat, tokens: tokens)
         let destination = OutputNamer.destination(
             for: input, in: directory, fileExtension: input.pathExtension, suffix: suffix)

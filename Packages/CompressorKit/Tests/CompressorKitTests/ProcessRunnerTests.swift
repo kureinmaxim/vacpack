@@ -27,6 +27,19 @@ struct ProcessRunnerTests {
         #expect(result.stderrString == "err\n")
     }
 
+    @Test func deliversStdoutLinesAsTheyArrive() async throws {
+        final class Lines: @unchecked Sendable {
+            let lock = NSLock()
+            var all: [String] = []
+        }
+        let lines = Lines()
+        let result = try await runner.run(sh, arguments: ["-c", "printf 'one\\ntwo\\n'; sleep 0.1; printf 'three'"]) {
+            line in lines.lock.withLock { lines.all.append(line) }
+        }
+        #expect(lines.lock.withLock { lines.all } == ["one", "two", "three"])
+        #expect(result.stdoutString == "one\ntwo\nthree")
+    }
+
     @Test func checkedThrowsOnNonZeroExit() async throws {
         let result = try await runner.run(URL(filePath: "/usr/bin/false"))
         #expect(throws: ProcessRunnerError.nonZeroExit(code: 1, stderr: "")) {

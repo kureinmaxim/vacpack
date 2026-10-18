@@ -41,7 +41,7 @@ struct ImageEncoder {
     let runner: ProcessRunner
 
     struct Options {
-        var quality: ImageQuality
+        var quality: QualityLevel
         /// Written for JPEG/PNG when the input had it (SPEC §3).
         var dpi: (width: Double, height: Double)?
         /// Keep the bitmap's embedded color profile; otherwise drop profiles that only restate sRGB.

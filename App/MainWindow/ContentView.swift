@@ -49,9 +49,9 @@ struct ContentView: View {
             Image(systemName: "arrow.down.doc")
                 .font(.system(size: 48, weight: .light))
                 .foregroundStyle(.secondary)
-            Text("Drop images or folders here")
+            Text("Drop images, videos or folders here")
                 .font(.title2)
-            Text("JPEG, PNG, WebP, AVIF, HEIC, TIFF, BMP, DNG, SVG")
+            Text("JPEG, PNG, WebP, AVIF, HEIC, TIFF, BMP, DNG, SVG · MP4, MOV, WebM, MKV, AVI…")
                 .foregroundStyle(.secondary)
             Button("Choose Files…", action: chooseFiles)
                 .padding(.top, 6)
@@ -158,26 +158,64 @@ private struct FileRow: View {
 
 private struct OptionsBar: View {
     @Bindable var model: CompressionModel
-    @State private var resizeMode = ResizeMode.same
-    @State private var resizeValue = 1600
 
-    enum ResizeMode: String, CaseIterable, Identifiable {
-        case same = "Same size"
-        case percentage = "Percentage"
-        case maxWidth = "Max width"
-        case maxHeight = "Max height"
-        case maxLongEdge = "Max long edge"
-        case maxShortEdge = "Max short edge"
-        var id: String { rawValue }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if model.hasImages || model.items.isEmpty {
+                ImageOptionsRow(model: model)
+            }
+            if model.hasVideos {
+                VideoOptionsRow(model: model)
+            }
+            HStack(spacing: 14) {
+                Toggle("Remove originals", isOn: $model.output.removeInput)
+                Spacer()
+                if let saved = model.totalSaved {
+                    Text("Saved \(bytes(saved.input - saved.output))")
+                        .foregroundStyle(.secondary)
+                }
+                if model.isCompressing {
+                    Button("Cancel", action: model.cancel)
+                } else {
+                    Button("Clear", action: model.clear)
+                        .disabled(model.items.isEmpty)
+                }
+                Button("Compress") {
+                    if !model.canCompress { model.resetFinished() }
+                    model.compress()
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(model.items.isEmpty || model.isCompressing)
+                .accessibilityIdentifier("compressButton")
+            }
+        }
+        .padding(12)
     }
+}
+
+/// Size limits shared by the image and video rows.
+private enum SizeLimit: String, CaseIterable, Identifiable {
+    case percentage = "Percentage"
+    case maxWidth = "Max width"
+    case maxHeight = "Max height"
+    case maxLongEdge = "Max long edge"
+    case maxShortEdge = "Max short edge"
+    var id: String { rawValue }
+}
+
+private struct ImageOptionsRow: View {
+    @Bindable var model: CompressionModel
+    @State private var limit: SizeLimit?
+    @State private var value = 1600
 
     var body: some View {
         HStack(spacing: 14) {
-            Picker("Quality", selection: $model.settings.quality) {
-                ForEach(ImageQuality.allCases, id: \.self) { Text($0.label).tag($0) }
+            Label("Images", systemImage: "photo").labelStyle(.titleAndIcon).frame(width: 80, alignment: .leading)
+            Picker("Quality", selection: $model.imageSettings.quality) {
+                ForEach(QualityLevel.allCases, id: \.self) { Text($0.label).tag($0) }
             }
             .fixedSize()
-            Picker("Format", selection: $model.settings.format) {
+            Picker("Format", selection: $model.imageSettings.format) {
                 Text("Same as input").tag(ImageFormatChoice.same)
                 Text("JPG").tag(ImageFormatChoice.jpg)
                 Text("PNG").tag(ImageFormatChoice.png)
@@ -185,51 +223,82 @@ private struct OptionsBar: View {
                 Text("AVIF").tag(ImageFormatChoice.avif)
             }
             .fixedSize()
-            Picker("Size", selection: $resizeMode) {
-                ForEach(ResizeMode.allCases) { Text($0.rawValue).tag($0) }
+            Picker("Size", selection: $limit) {
+                Text("Same size").tag(SizeLimit?.none)
+                ForEach(SizeLimit.allCases) { Text($0.rawValue).tag(SizeLimit?.some($0)) }
             }
             .fixedSize()
-            if resizeMode != .same {
-                TextField("Value", value: $resizeValue, format: .number)
-                    .frame(width: 64)
-                Text(resizeMode == .percentage ? "%" : "px").foregroundStyle(.secondary)
+            if let limit {
+                TextField("Value", value: $value, format: .number).frame(width: 64)
+                Text(limit == .percentage ? "%" : "px").foregroundStyle(.secondary)
             }
-            Toggle("Remove originals", isOn: $model.output.removeInput)
             Spacer()
-            if let saved = model.totalSaved {
-                Text("Saved \(bytes(saved.input - saved.output))")
-                    .foregroundStyle(.secondary)
-            }
-            if model.isCompressing {
-                Button("Cancel", action: model.cancel)
-            } else {
-                Button("Clear", action: model.clear)
-                    .disabled(model.items.isEmpty)
-            }
-            Button("Compress") {
-                if !model.canCompress { model.resetFinished() }
-                model.compress()
-            }
-            .keyboardShortcut(.defaultAction)
-            .disabled(model.items.isEmpty || model.isCompressing)
-            .accessibilityIdentifier("compressButton")
         }
-        .padding(12)
-        .onChange(of: resizeMode) { applyResize() }
-        .onChange(of: resizeValue) { applyResize() }
+        .onChange(of: limit) { apply() }
+        .onChange(of: value) { apply() }
     }
 
-    private func applyResize() {
-        let value = max(1, resizeValue)
-        model.settings.resize =
-            switch resizeMode {
-            case .same: .same
-            case .percentage: .percentage(min(100, value))
-            case .maxWidth: .maxWidth(value)
-            case .maxHeight: .maxHeight(value)
-            case .maxLongEdge: .maxLongEdge(value)
-            case .maxShortEdge: .maxShortEdge(value)
+    private func apply() {
+        let n = max(1, value)
+        model.imageSettings.resize =
+            switch limit {
+            case nil: .same
+            case .percentage: .percentage(min(100, n))
+            case .maxWidth: .maxWidth(n)
+            case .maxHeight: .maxHeight(n)
+            case .maxLongEdge: .maxLongEdge(n)
+            case .maxShortEdge: .maxShortEdge(n)
             }
+    }
+}
+
+private struct VideoOptionsRow: View {
+    @Bindable var model: CompressionModel
+
+    enum Resolution: String, CaseIterable, Identifiable {
+        case same = "Same as input"
+        case uhd4K = "4K"
+        case fullHD = "Full HD"
+        case hd = "HD"
+        var id: String { rawValue }
+
+        var value: VideoResolution {
+            switch self {
+            case .same: .same
+            case .uhd4K: .uhd4K
+            case .fullHD: .fullHD
+            case .hd: .hd
+            }
+        }
+    }
+
+    @State private var resolution = Resolution.same
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Label("Videos", systemImage: "film").labelStyle(.titleAndIcon).frame(width: 80, alignment: .leading)
+            Picker("Quality", selection: $model.videoSettings.quality) {
+                ForEach(QualityLevel.allCases, id: \.self) { Text($0.label).tag($0) }
+            }
+            .fixedSize()
+            Picker("Format", selection: $model.videoSettings.format) {
+                Text("Same as input").tag(VideoFormatChoice.same)
+                Text("MP4").tag(VideoFormatChoice.mp4)
+                Text("WebM").tag(VideoFormatChoice.webm)
+                Text("MOV").tag(VideoFormatChoice.mov)
+                Text("MP3 (audio)").tag(VideoFormatChoice.mp3)
+            }
+            .fixedSize()
+            Picker("Resolution", selection: $resolution) {
+                ForEach(Resolution.allCases) { Text($0.rawValue).tag($0) }
+            }
+            .fixedSize()
+            Toggle("Remove audio", isOn: $model.videoSettings.removeAudio)
+            Toggle("Keep transparency", isOn: $model.videoSettings.preserveTransparency)
+                .help("MOV keeps the alpha channel with HEVC; WebM always keeps it")
+            Spacer()
+        }
+        .onChange(of: resolution) { model.videoSettings.resolution = resolution.value }
     }
 }
 

@@ -55,8 +55,8 @@ struct ModelTests {
     }
 
     @Test func qualityLabels() {
-        #expect(ImageQuality.good.label == "Good")
-        #expect(ImageQuality.acceptable.label == "Acceptable")
+        #expect(QualityLevel.good.label == "Good")
+        #expect(QualityLevel.acceptable.label == "Acceptable")
     }
 }
 

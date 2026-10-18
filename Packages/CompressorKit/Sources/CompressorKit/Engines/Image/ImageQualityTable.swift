@@ -4,7 +4,7 @@ import Foundation
 /// measurements of the original in stage R. Documented in docs/QUALITY.md.
 enum ImageQualityTable {
     /// ImageIO JPEG quality, 0…1.
-    static func jpeg(_ q: ImageQuality) -> Double {
+    static func jpeg(_ q: QualityLevel) -> Double {
         switch q {
         case .highest: 0.92
         case .high: 0.82
@@ -15,7 +15,7 @@ enum ImageQualityTable {
     }
 
     /// ImageIO HEIC quality, 0…1 (HEVC needs less than JPEG for the same look).
-    static func heic(_ q: ImageQuality) -> Double {
+    static func heic(_ q: QualityLevel) -> Double {
         switch q {
         case .highest: 0.85
         case .high: 0.70
@@ -26,7 +26,7 @@ enum ImageQualityTable {
     }
 
     /// pngquant `--quality min-max`; nil means lossless only (no palette quantization).
-    static func pngquant(_ q: ImageQuality) -> ClosedRange<Int>? {
+    static func pngquant(_ q: QualityLevel) -> ClosedRange<Int>? {
         switch q {
         case .highest: nil
         case .high: 80...98
@@ -37,7 +37,7 @@ enum ImageQualityTable {
     }
 
     /// cwebp `-q`, 0…100.
-    static func webp(_ q: ImageQuality) -> Int {
+    static func webp(_ q: QualityLevel) -> Int {
         switch q {
         case .highest: 92
         case .high: 82
@@ -48,7 +48,7 @@ enum ImageQualityTable {
     }
 
     /// avifenc `-q`, 0…100.
-    static func avif(_ q: ImageQuality) -> Int {
+    static func avif(_ q: QualityLevel) -> Int {
         switch q {
         case .highest: 85
         case .high: 72

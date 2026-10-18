@@ -142,7 +142,9 @@ let allImageToolsInstalled =
     installedImageTools.pngquant != nil && installedImageTools.cwebp != nil && installedImageTools.avifenc != nil
 
 func makePipeline(trashBin: URL) -> CompressionPipeline {
-    CompressionPipeline(image: ImageEngine(tools: installedImageTools), trasher: RecordingTrasher(bin: trashBin))
+    CompressionPipeline(
+        image: ImageEngine(tools: installedImageTools), video: VideoEngine(locator: ToolLocator()),
+        trasher: RecordingTrasher(bin: trashBin))
 }
 
 /// Runs one request through the pipeline.

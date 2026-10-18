@@ -19,6 +19,8 @@ open MyCompressor.xcodeproj
 
 ```bash
 swift run --package-path Packages/CompressorKit mycompressor-cli tools
+swift run --package-path Packages/CompressorKit mycompressor-cli image photos/ --format webp --max-long-edge 2000
+swift run --package-path Packages/CompressorKit mycompressor-cli video clip.mov --format mp4 --resolution 1080p
 ```
 
 `MyCompressor.xcodeproj` генерируется из `project.yml` и в git не хранится.

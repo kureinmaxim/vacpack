@@ -51,6 +51,42 @@ final class LaunchTests: XCTestCase {
         }
     }
 
+    /// Compresses a short video through the app's video queue.
+    func testCompressesVideo() throws {
+        let ffmpeg = "/opt/homebrew/bin/ffmpeg"
+        try XCTSkipUnless(FileManager.default.isExecutableFile(atPath: ffmpeg), "needs ffmpeg")
+        let folder = FileManager.default.temporaryDirectory.appending(path: "MyCompressorUITest-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let clip = folder.appending(path: "clip.mp4")
+        let make = Process()
+        make.executableURL = URL(filePath: ffmpeg)
+        make.arguments = [
+            "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=size=640x360:rate=30:duration=2,noise=alls=10:allf=t",
+            "-f", "lavfi", "-i", "sine=d=2", "-c:v", "libx264", "-crf", "12", "-c:a", "aac", clip.path,
+        ]
+        try make.run()
+        make.waitUntilExit()
+        XCTAssertEqual(make.terminationStatus, 0)
+
+        let app = XCUIApplication()
+        app.launchEnvironment["MYCOMPRESSOR_UITEST_FILES"] = clip.path
+        app.launch()
+        let detail = app.descendants(matching: .any).matching(identifier: "fileDetail").firstMatch
+        XCTAssertTrue(detail.waitForExistence(timeout: 10))
+        app.descendants(matching: .any)["compressButton"].click()
+
+        var text = ""
+        let deadline = Date().addingTimeInterval(60)
+        repeat {
+            text = (detail.value as? String).flatMap { $0.isEmpty ? nil : $0 } ?? detail.label
+            if text.contains("→") { break }
+            Thread.sleep(forTimeInterval: 0.5)
+        } while Date() < deadline
+        XCTAssertTrue(text.contains("→"), "row: \(text)")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appending(path: "clip_compressed.mp4").path))
+    }
+
     /// A noisy high-quality JPEG that the default settings will shrink.
     static func writeJPEG(to url: URL, width: Int = 640, height: Int = 480) throws -> URL {
         let space = CGColorSpace(name: CGColorSpace.sRGB)!

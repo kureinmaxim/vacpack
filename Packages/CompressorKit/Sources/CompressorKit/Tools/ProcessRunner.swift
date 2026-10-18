@@ -46,12 +46,15 @@ public struct ProcessRunner: Sendable {
     /// call `checked()` on the result when failure should throw.
     ///
     /// Task cancellation and `timeout` stop the process (SIGTERM, then SIGKILL).
+    /// `onStdoutLine` receives each complete stdout line as it arrives (for progress reporting);
+    /// the full output is still returned in the result.
     public func run(
         _ executable: URL,
         arguments: [String] = [],
         environment: [String: String]? = nil,
         currentDirectory: URL? = nil,
-        timeout: Duration? = nil
+        timeout: Duration? = nil,
+        onStdoutLine: (@Sendable (String) -> Void)? = nil
     ) async throws -> ProcessResult {
         let process = Process()
         process.executableURL = executable
@@ -74,7 +77,7 @@ public struct ProcessRunner: Sendable {
         defer { timeoutTask?.cancel() }
 
         let result = try await withTaskCancellationHandler {
-            try await handle.launchAndWait(stdout: stdoutPipe, stderr: stderrPipe)
+            try await handle.launchAndWait(stdout: stdoutPipe, stderr: stderrPipe, onStdoutLine: onStdoutLine)
         } onCancel: {
             handle.stop(reason: .cancellation)
         }
@@ -104,11 +107,13 @@ private final class RunningProcess: @unchecked Sendable {
 
     var stopReason: StopReason? { lock.withLock { _stopReason } }
 
-    func launchAndWait(stdout: Pipe, stderr: Pipe) async throws -> ProcessResult {
+    func launchAndWait(stdout: Pipe, stderr: Pipe, onStdoutLine: (@Sendable (String) -> Void)?) async throws
+        -> ProcessResult
+    {
         try await withCheckedThrowingContinuation { continuation in
             // Drain both pipes as data arrives so a chatty process never blocks on a full pipe.
             let endOfStreams = DispatchGroup()
-            let out = StreamCollector(stdout, group: endOfStreams)
+            let out = StreamCollector(stdout, group: endOfStreams, onLine: onStdoutLine)
             let err = StreamCollector(stderr, group: endOfStreams)
 
             // terminationHandler, not waitUntilExit(): waitUntilExit on a background thread can
@@ -169,16 +174,20 @@ private final class RunningProcess: @unchecked Sendable {
 }
 
 /// Collects one pipe's output; leaves `group` once at end of stream or on `finish()`.
+/// With `onLine`, complete lines are also delivered as they arrive.
 private final class StreamCollector: @unchecked Sendable {
     private let handle: FileHandle
     private let group: DispatchGroup
+    private let onLine: (@Sendable (String) -> Void)?
     private let lock = NSLock()
     private var buffer = Data()
+    private var partialLine = Data()
     private var finished = false
 
-    init(_ pipe: Pipe, group: DispatchGroup) {
+    init(_ pipe: Pipe, group: DispatchGroup, onLine: (@Sendable (String) -> Void)? = nil) {
         handle = pipe.fileHandleForReading
         self.group = group
+        self.onLine = onLine
         group.enter()
         handle.readabilityHandler = { [weak self] handle in
             self?.consume(handle.availableData)
@@ -186,28 +195,47 @@ private final class StreamCollector: @unchecked Sendable {
     }
 
     private func consume(_ chunk: Data) {
-        lock.withLock {
-            guard !finished else { return }
+        let lines: [String] = lock.withLock {
+            guard !finished else { return [] }
             if chunk.isEmpty {
-                close()
-            } else {
-                buffer.append(chunk)
+                return close()
             }
+            buffer.append(chunk)
+            return splitLines(appending: chunk)
         }
+        // Outside the lock, so a handler may do anything without deadlocking the reader.
+        if let onLine { lines.forEach(onLine) }
     }
 
     /// Stops reading and returns everything collected so far.
     func finish() -> Data {
-        lock.withLock {
-            if !finished { close() }
-            return buffer
+        let (data, lines): (Data, [String]) = lock.withLock {
+            let lines = finished ? [] : close()
+            return (buffer, lines)
         }
+        if let onLine { lines.forEach(onLine) }
+        return data
     }
 
-    /// Caller holds `lock`.
-    private func close() {
+    /// Caller holds `lock`. Returns complete lines from `chunk`, keeping the unfinished tail.
+    private func splitLines(appending chunk: Data) -> [String] {
+        guard onLine != nil else { return [] }
+        partialLine.append(chunk)
+        var lines: [String] = []
+        while let newline = partialLine.firstIndex(of: UInt8(ascii: "\n")) {
+            lines.append(String(decoding: partialLine[partialLine.startIndex..<newline], as: UTF8.self))
+            partialLine.removeSubrange(partialLine.startIndex...newline)
+        }
+        return lines
+    }
+
+    /// Caller holds `lock`. Returns the last unterminated line, if any.
+    private func close() -> [String] {
         finished = true
         handle.readabilityHandler = nil
         group.leave()
+        guard onLine != nil, !partialLine.isEmpty else { return [] }
+        defer { partialLine.removeAll() }
+        return [String(decoding: partialLine, as: UTF8.self)]
     }
 }
