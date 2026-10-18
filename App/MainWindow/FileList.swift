@@ -134,7 +134,8 @@ private struct FileRow: View {
     }
 }
 
-/// "−87%" on the icon's gradient; a result that grew on request (another format or size) shows orange.
+/// "−87%" printed on the icon's mustard paper; a result that grew on request (another format or
+/// size) shows orange.
 private struct SavingsBadge: View {
     let fraction: Double
 
@@ -142,12 +143,13 @@ private struct SavingsBadge: View {
         let percent = Int((abs(fraction) * 100).rounded())
         Text(fraction >= 0 ? "−\(percent)%" : "+\(percent)%")
             .font(.callout.weight(.bold).monospacedDigit())
-            .foregroundStyle(.white)
+            .foregroundStyle(fraction >= 0 ? Brand.ink : .white)
             .padding(.horizontal, 9)
             .padding(.vertical, 3)
             .background {
                 if fraction >= 0 {
-                    Capsule().fill(Brand.tile)
+                    Capsule().fill(Brand.button)
+                        .overlay(Capsule().strokeBorder(Brand.ochre.opacity(0.9), lineWidth: 1))
                 } else {
                     Capsule().fill(Color.orange.gradient)
                 }

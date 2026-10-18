@@ -2,33 +2,33 @@ import AppKit
 import CompressorKit
 import SwiftUI
 
-/// Accents come from the app icon (`design/AppIcon.swift`): the tile's mint-to-blue gradient.
-/// File kinds use a vintage print palette (mustard, rust, jade, cerulean) instead of the usual pink
-/// and violet, so they read apart from the accent and from each other.
+/// The palette of an old print poster, shared with the app icon (`design/AppIcon.swift`): mustard
+/// paper with a rust edge for accents, the photo's cerulean and jade (with rust) for file kinds.
 enum Brand {
-    static let mint = Color(hex: 0x3CF2C6)
-    static let cyan = Color(hex: 0x14B4D9)
-    static let blue = Color(hex: 0x1D4FD8)
-    static let indigo = Color(hex: 0x23157A)
-
-    static let mustard = Color(hex: 0xD9A033)
+    static let paper = Color(hex: 0xF6D774)
+    static let mustard = Color(hex: 0xE8B84A)
+    static let ochre = Color(hex: 0xD9A033)
     static let rust = Color(hex: 0xB5532B)
-    static let jade = Color(hex: 0x2F9A76)
+    static let brown = Color(hex: 0x7A3A1C)
+    /// Text on mustard: printed ink.
+    static let ink = Color(hex: 0x3A2208)
     static let cerulean = Color(hex: 0x3F8CC9)
+    static let jade = Color(hex: 0x2F9A76)
     static let deepBlue = Color(hex: 0x2C5F8A)
 
-    /// The icon's tile, for prominent accents such as savings badges and progress.
-    static let tile = LinearGradient(colors: [mint, cyan, blue], startPoint: .topLeading, endPoint: .bottomTrailing)
+    /// The icon's tile, for prominent accents such as savings badges, progress and the drop frame.
+    static let tile = LinearGradient(
+        colors: [paper, mustard, ochre, rust], startPoint: .topLeading, endPoint: .bottomTrailing)
 
-    /// Main buttons: white text stays readable on this end of the tile.
-    static let button = LinearGradient(colors: [cyan, blue], startPoint: .leading, endPoint: .trailing)
+    /// Main buttons and badges: mustard paper, printed in dark ink.
+    static let button = LinearGradient(colors: [paper, mustard, ochre], startPoint: .top, endPoint: .bottom)
 
     /// The app icon from the asset catalog; NSApp.applicationIconImage can be a stale cached copy.
     static var icon: NSImage { NSImage(named: "AppIcon") ?? NSApp.applicationIconImage }
 
-    /// Gradient text that stays readable: deep blue on light backgrounds, mint on dark ones.
-    static func ink(_ scheme: ColorScheme) -> LinearGradient {
-        let colors = scheme == .dark ? [mint, cyan] : [blue, indigo]
+    /// Gradient text that stays readable: rust and brown on light backgrounds, mustard on dark ones.
+    static func headline(_ scheme: ColorScheme) -> LinearGradient {
+        let colors = scheme == .dark ? [paper, mustard] : [rust, brown]
         return LinearGradient(colors: colors, startPoint: .leading, endPoint: .trailing)
     }
 }
@@ -46,11 +46,11 @@ extension FileKind {
     /// One color per kind across the window.
     var tint: Color {
         switch self {
-        case .image: Brand.mustard
-        case .video: Brand.rust
-        case .gif: Brand.jade
-        case .pdf: Brand.cerulean
-        case .epub: Brand.deepBlue
+        case .image: Brand.cerulean
+        case .video: Brand.jade
+        case .gif: Brand.rust
+        case .pdf: Brand.deepBlue
+        case .epub: Brand.brown
         }
     }
 
@@ -90,18 +90,19 @@ struct KindBadge: View {
     }
 }
 
-/// The main action, filled with the icon's gradient. Unlike `.borderedProminent` it keeps its color
-/// when the window is not active.
+/// The main action on the icon's mustard paper. Unlike `.borderedProminent` it keeps its color when
+/// the window is not active.
 struct BrandButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.body.weight(.semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(Brand.ink)
             .padding(.horizontal, 16)
             .padding(.vertical, 7)
             .background(Brand.button, in: Capsule())
+            .overlay(Capsule().strokeBorder(Brand.ochre.opacity(0.9), lineWidth: 1))
             .opacity(isEnabled ? (configuration.isPressed ? 0.85 : 1) : 0.4)
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
@@ -148,7 +149,7 @@ struct GradientProgress: View {
     }
 }
 
-/// Soft light from the icon's colors behind the window content.
+/// Warm paper light from the icon's colors behind the window content, with a touch of its sky.
 struct BrandBackdrop: View {
     @Environment(\.colorScheme) private var scheme
 
@@ -157,12 +158,13 @@ struct BrandBackdrop: View {
         ZStack {
             Color(nsColor: .windowBackgroundColor)
             RadialGradient(
-                colors: [Brand.mint.opacity(strength), .clear], center: .topLeading, startRadius: 0, endRadius: 560)
+                colors: [Brand.mustard.opacity(strength), .clear], center: .topLeading, startRadius: 0,
+                endRadius: 560)
             RadialGradient(
-                colors: [Brand.blue.opacity(strength), .clear], center: .bottomTrailing, startRadius: 0,
+                colors: [Brand.rust.opacity(strength * 0.8), .clear], center: .bottomTrailing, startRadius: 0,
                 endRadius: 680)
             RadialGradient(
-                colors: [Brand.mustard.opacity(strength * 0.6), .clear], center: .topTrailing, startRadius: 0,
+                colors: [Brand.cerulean.opacity(strength * 0.6), .clear], center: .topTrailing, startRadius: 0,
                 endRadius: 420)
         }
         .ignoresSafeArea()

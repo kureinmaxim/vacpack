@@ -20,7 +20,7 @@ struct ContentView: View {
         }
         .frame(minWidth: 760, minHeight: 540)
         .background(BrandBackdrop())
-        .tint(Brand.blue)
+        .tint(Brand.rust)
         .dropDestination(for: URL.self) { urls, _ in
             model.add(urls)
             return true
@@ -121,7 +121,7 @@ private struct OptionsBar: View {
             Text("Saved").foregroundStyle(.secondary)
             Text(bytes(max(0, saved.input - saved.output)))
                 .font(.title3.weight(.bold))
-                .foregroundStyle(Brand.ink(scheme))
+                .foregroundStyle(Brand.headline(scheme))
             Text(percent >= 0 ? "−\(percent)%" : "+\(-percent)%")
                 .font(.callout.weight(.semibold).monospacedDigit())
                 .foregroundStyle(.secondary)

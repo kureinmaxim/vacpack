@@ -51,7 +51,7 @@ struct DropZone: View {
         let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
         return
             shape
-            .fill(Brand.cyan.opacity(isTargeted ? 0.14 : 0.04))
+            .fill(Brand.mustard.opacity(isTargeted ? 0.16 : 0.05))
             .overlay {
                 shape
                     .strokeBorder(

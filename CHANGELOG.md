@@ -13,7 +13,8 @@ Notable changes to Vacpack. The format follows [Keep a Changelog](https://keepac
 
 ### Changed
 
-- File kinds use a vintage print palette — mustard for images, rust for videos, jade for GIF — instead of pink and violet; "Original kept" is neutral gray.
+- The icon and the window share an old print poster's palette instead of neon blue, pink and violet: the icon's tile is mustard paper with a rust edge and its photo a cerulean sky with jade mountains; buttons, savings badges and progress are mustard printed in dark ink.
+- File kinds take the photo's colors: cerulean for images, jade for videos, rust for GIF; "Original kept" is neutral gray.
 
 ## [0.1.1] - 2026-10-18
 

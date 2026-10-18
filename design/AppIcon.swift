@@ -5,6 +5,8 @@ import UniformTypeIdentifiers
 
 // Vacpack app icon, drawn in code so every size renders crisp from the same vector design:
 // a vacuum-sealed pouch (sides pulled in, air leaving through the valve) with a photo inside.
+// Palette of an old print poster, shared with the window (App/Design/Brand.swift): mustard paper
+// with a rust edge for the tile, a cerulean sky and jade mountains in the photo.
 // Usage: AppIcon <output.png> [size]   (scripts/make-icon.sh renders every macOS size)
 
 let output = URL(filePath: CommandLine.arguments[1])
@@ -37,7 +39,7 @@ let tilePath = CGPath(roundedRect: tile, cornerWidth: 186, cornerHeight: 186, tr
 ctx.saveGState()
 ctx.setShadow(offset: CGSize(width: 0, height: 14), blur: 28, color: color(0x000000, 0.35))
 ctx.addPath(tilePath)
-ctx.setFillColor(color(0x0E2A6B))
+ctx.setFillColor(color(0xA9761F))
 ctx.fillPath()
 ctx.restoreGState()
 
@@ -45,7 +47,7 @@ ctx.saveGState()
 ctx.addPath(tilePath)
 ctx.clip()
 ctx.drawLinearGradient(
-    gradient([color(0x3CF2C6), color(0x14B4D9), color(0x1D4FD8), color(0x23157A)], [0, 0.32, 0.72, 1]),
+    gradient([color(0xF6D774), color(0xE8B84A), color(0xD9A033), color(0xB5532B)], [0, 0.32, 0.72, 1]),
     start: CGPoint(x: 260, y: 100), end: CGPoint(x: 764, y: 924),
     options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
 // Soft light from the top left.
@@ -78,9 +80,9 @@ pouch.addCurve(
 pouch.closeSubpath()
 
 ctx.saveGState()
-ctx.setShadow(offset: CGSize(width: 0, height: 22), blur: 36, color: color(0x0B1450, 0.45))
+ctx.setShadow(offset: CGSize(width: 0, height: 22), blur: 36, color: color(0x5A3410, 0.45))
 ctx.addPath(pouch)
-ctx.setFillColor(color(0xF4FBFF))
+ctx.setFillColor(color(0xFAFCFD))
 ctx.fillPath()
 ctx.restoreGState()
 
@@ -88,7 +90,7 @@ ctx.saveGState()
 ctx.addPath(pouch)
 ctx.clip()
 ctx.drawLinearGradient(
-    gradient([color(0xFFFFFF), color(0xDDEFFA), color(0xB9D7EE)], [0, 0.55, 1]),
+    gradient([color(0xFFFFFF), color(0xEEF2F4), color(0xD3DDE3)], [0, 0.55, 1]),
     start: CGPoint(x: 400, y: top), end: CGPoint(x: 640, y: bottom),
     options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
 
@@ -105,11 +107,11 @@ ctx.saveGState()
 ctx.addPath(photo)
 ctx.clip()
 ctx.drawLinearGradient(
-    gradient([color(0xFFB45C), color(0xFF6A88), color(0x8B5CF6)], [0, 0.5, 1]),
+    gradient([color(0x7DBCE8), color(0x3F8CC9), color(0x2C5F8A)], [0, 0.5, 1]),
     start: CGPoint(x: 512, y: pt), end: CGPoint(x: 512, y: pb),
     options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
 // Sun and two mountains.
-ctx.setFillColor(color(0xFFF3C4))
+ctx.setFillColor(color(0xF6D774))
 ctx.fillEllipse(in: CGRect(x: 560, y: 470, width: 64, height: 64))
 let mountains = CGMutablePath()
 mountains.move(to: CGPoint(x: pl - 10, y: pb + 10))
@@ -119,13 +121,13 @@ mountains.addLine(to: CGPoint(x: 588, y: 590))
 mountains.addLine(to: CGPoint(x: pr + 10, y: pb + 10))
 mountains.closeSubpath()
 ctx.addPath(mountains)
-ctx.setFillColor(color(0x3B1C8C, 0.85))
+ctx.setFillColor(color(0x2F9A76, 0.95))
 ctx.fillPath()
 ctx.restoreGState()
 
 // Wrinkles where the film is pulled tight.
 ctx.setLineCap(.round)
-ctx.setStrokeColor(color(0x7FA8C9, 0.55))
+ctx.setStrokeColor(color(0x98A8B3, 0.55))
 ctx.setLineWidth(6)
 for wrinkle in [
     (CGPoint(x: 300, y: 360), CGPoint(x: 352, y: 430), CGPoint(x: 318, y: 405)),
@@ -163,12 +165,12 @@ for tooth in 0..<teeth {
 seal.addLine(to: CGPoint(x: right + 8, y: top + 18))
 seal.closeSubpath()
 ctx.saveGState()
-ctx.setShadow(offset: CGSize(width: 0, height: 6), blur: 10, color: color(0x0B1450, 0.25))
+ctx.setShadow(offset: CGSize(width: 0, height: 6), blur: 10, color: color(0x5A3410, 0.25))
 ctx.addPath(seal)
-ctx.setFillColor(color(0xEAF6FF))
+ctx.setFillColor(color(0xF3F6F8))
 ctx.fillPath()
 ctx.restoreGState()
-ctx.setStrokeColor(color(0x9CC3E0, 0.9))
+ctx.setStrokeColor(color(0xB8C6CF, 0.9))
 ctx.setLineWidth(4)
 for y in [top - 6, top + 6] {
     ctx.move(to: CGPoint(x: left + 4, y: y))
@@ -180,11 +182,11 @@ for y in [top - 6, top + 6] {
 
 let valve = CGPoint(x: 512, y: 368)
 ctx.saveGState()
-ctx.setShadow(offset: CGSize(width: 0, height: 6), blur: 12, color: color(0x0B1450, 0.4))
-ctx.setFillColor(color(0x1D2B7A))
+ctx.setShadow(offset: CGSize(width: 0, height: 6), blur: 12, color: color(0x5A3410, 0.4))
+ctx.setFillColor(color(0x7A3A1C))
 ctx.fillEllipse(in: CGRect(x: valve.x - 46, y: valve.y - 46, width: 92, height: 92))
 ctx.restoreGState()
-ctx.setStrokeColor(color(0x5EF0D2))
+ctx.setStrokeColor(color(0x5CC29C))
 ctx.setLineWidth(9)
 ctx.strokeEllipse(in: CGRect(x: valve.x - 34, y: valve.y - 34, width: 68, height: 68))
 // Up arrow: air goes out.
