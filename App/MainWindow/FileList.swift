@@ -116,7 +116,7 @@ private struct FileRow: View {
                 .buttonStyle(.borderless)
                 .help("Show in Finder")
             }
-        case .done(.keptOriginal): StatusPill(text: "Original kept", symbol: "checkmark.circle", color: .orange)
+        case .done(.keptOriginal): StatusPill(text: "Original kept", symbol: "checkmark.circle", color: .secondary)
         case .done(.unsupported): StatusPill(text: "Not supported", symbol: "nosign", color: .secondary)
         case .done(.failed): StatusPill(text: "Failed", symbol: "xmark.octagon", color: .red)
         case .done(.cancelled): StatusPill(text: "Cancelled", symbol: "minus.circle", color: .secondary)

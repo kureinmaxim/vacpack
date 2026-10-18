@@ -12,9 +12,12 @@ settings:
     SWIFT_VERSION: "6.0"
     # Release version, MAJOR.MINOR.PATCH, and its date: the source of truth.
     # Change both only with scripts/update_version.py (VERSION_MANAGEMENT.md).
-    MARKETING_VERSION: "0.1.1"
+    MARKETING_VERSION: "0.2.0"
     VACPACK_RELEASE_DATE: "18.10.2026"
     CURRENT_PROJECT_VERSION: "1"  # scripts/package.sh stamps a date.time build instead
+    # The commit a build came from and when it was pushed, for the About panel (set by package.sh).
+    VACPACK_SOURCE: ""
+    VACPACK_SOURCE_DATE: ""
     # Local builds are ad-hoc signed; Developer ID signing arrives in stage 13.
     CODE_SIGN_STYLE: Manual
     CODE_SIGN_IDENTITY: "-"
@@ -41,6 +44,8 @@ targets:
         CFBundleDisplayName: Vacpack
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        VacpackSource: $(VACPACK_SOURCE)
+        VacpackSourceDate: $(VACPACK_SOURCE_DATE)
         LSApplicationCategoryType: public.app-category.utilities
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         NSHumanReadableCopyright: ""

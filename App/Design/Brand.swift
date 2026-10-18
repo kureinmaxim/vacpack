@@ -2,16 +2,20 @@ import AppKit
 import CompressorKit
 import SwiftUI
 
-/// Colors from the app icon (`design/AppIcon.swift`): the tile's mint-to-blue gradient for accents,
-/// the warm photo inside the pouch for file kinds.
+/// Accents come from the app icon (`design/AppIcon.swift`): the tile's mint-to-blue gradient.
+/// File kinds use a vintage print palette (mustard, rust, jade, cerulean) instead of the usual pink
+/// and violet, so they read apart from the accent and from each other.
 enum Brand {
     static let mint = Color(hex: 0x3CF2C6)
     static let cyan = Color(hex: 0x14B4D9)
     static let blue = Color(hex: 0x1D4FD8)
     static let indigo = Color(hex: 0x23157A)
-    static let peach = Color(hex: 0xFFB45C)
-    static let pink = Color(hex: 0xFF6A88)
-    static let violet = Color(hex: 0x8B5CF6)
+
+    static let mustard = Color(hex: 0xD9A033)
+    static let rust = Color(hex: 0xB5532B)
+    static let jade = Color(hex: 0x2F9A76)
+    static let cerulean = Color(hex: 0x3F8CC9)
+    static let deepBlue = Color(hex: 0x2C5F8A)
 
     /// The icon's tile, for prominent accents such as savings badges and progress.
     static let tile = LinearGradient(colors: [mint, cyan, blue], startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -24,7 +28,7 @@ enum Brand {
 
     /// Gradient text that stays readable: deep blue on light backgrounds, mint on dark ones.
     static func ink(_ scheme: ColorScheme) -> LinearGradient {
-        let colors = scheme == .dark ? [mint, cyan] : [blue, violet]
+        let colors = scheme == .dark ? [mint, cyan] : [blue, indigo]
         return LinearGradient(colors: colors, startPoint: .leading, endPoint: .trailing)
     }
 }
@@ -42,11 +46,11 @@ extension FileKind {
     /// One color per kind across the window.
     var tint: Color {
         switch self {
-        case .image: Brand.pink
-        case .video: Brand.violet
-        case .gif: Brand.cyan
-        case .pdf: Brand.peach
-        case .epub: Brand.blue
+        case .image: Brand.mustard
+        case .video: Brand.rust
+        case .gif: Brand.jade
+        case .pdf: Brand.cerulean
+        case .epub: Brand.deepBlue
         }
     }
 
@@ -158,7 +162,7 @@ struct BrandBackdrop: View {
                 colors: [Brand.blue.opacity(strength), .clear], center: .bottomTrailing, startRadius: 0,
                 endRadius: 680)
             RadialGradient(
-                colors: [Brand.pink.opacity(strength * 0.5), .clear], center: .topTrailing, startRadius: 0,
+                colors: [Brand.mustard.opacity(strength * 0.6), .clear], center: .topTrailing, startRadius: 0,
                 endRadius: 420)
         }
         .ignoresSafeArea()

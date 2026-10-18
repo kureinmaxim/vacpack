@@ -4,6 +4,17 @@ Notable changes to Vacpack. The format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-18
+
+### Added
+
+- About Vacpack links to the project and its author on GitHub and shows the commit the build came from and when it was pushed.
+- Help menu: Vacpack on GitHub, Release Notes, Report an Issue, Author on GitHub.
+
+### Changed
+
+- File kinds use a vintage print palette — mustard for images, rust for videos, jade for GIF — instead of pink and violet; "Original kept" is neutral gray.
+
 ## [0.1.1] - 2026-10-18
 
 ### Changed

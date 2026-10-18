@@ -109,6 +109,7 @@ scripts/package.sh --open   # то же и открыть DMG в Finder
 1. Отказывается собирать, если версии разошлись (`update_version.py status`).
 2. `xcodegen generate` и сборка Release для arm64 и x86_64 — журнал в `.build/release-build.log`.
 3. Ставит номер сборки `CFBundleVersion` по времени UTC, например `20261018.144243`, и проверяет, что он попал в приложение.
+   Туда же пишет коммит и дату push (`VacpackSource`, `VacpackSourceDate`) — их показывает About Vacpack. Дата push берётся из журнала `origin/main`; собранное до push помечено «not pushed yet», с незакоммиченными правками — «with local changes, not committed yet».
 4. Проверяет подпись (`codesign --verify --deep --strict`).
 5. Собирает DMG со ссылкой на «Программы» и проверяет его (`hdiutil verify`).
 

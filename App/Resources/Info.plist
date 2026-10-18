@@ -26,5 +26,9 @@
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>NSHumanReadableCopyright</key>
 	<string></string>
+	<key>VacpackSource</key>
+	<string>$(VACPACK_SOURCE)</string>
+	<key>VacpackSourceDate</key>
+	<string>$(VACPACK_SOURCE_DATE)</string>
 </dict>
 </plist>
