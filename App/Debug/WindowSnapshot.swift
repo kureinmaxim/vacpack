@@ -27,7 +27,7 @@
                 try? await Task.sleep(for: .seconds(1))
                 guard let window = NSApp.windows.first(where: { $0.contentView != nil }) else { exit(1) }
                 window.alphaValue = 0
-                window.setContentSize(NSSize(width: 900, height: 780))
+                window.setContentSize(size(environment["VACPACK_SNAPSHOT_SIZE"]) ?? NSSize(width: 900, height: 780))
                 // Wait for a requested run to finish, then for thumbnails.
                 for _ in 0..<240 where isBusy() { try? await Task.sleep(for: .milliseconds(250)) }
                 try? await Task.sleep(for: .seconds(1.5))
@@ -43,6 +43,14 @@
                 }
                 NSApp.terminate(nil)
             }
+        }
+
+        /// "900x690" → 900 × 690 points.
+        private static func size(_ text: String?) -> NSSize? {
+            guard let parts = text?.split(separator: "x").compactMap({ Double($0) }), parts.count == 2 else {
+                return nil
+            }
+            return NSSize(width: parts[0], height: parts[1])
         }
 
         private static func render(_ layer: CALayer, size: CGSize, scale: CGFloat) -> CGImage? {

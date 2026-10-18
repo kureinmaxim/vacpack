@@ -4,6 +4,10 @@ Notable changes to Vacpack. The format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+### Added
+
+- README screenshots of the window, light and dark, from `scripts/snapshot.sh --readme`; `scripts/make-demo.sh` generates the photos, video and GIF in them.
+
 ## [0.2.1] - 2026-10-18
 
 ### Fixed
