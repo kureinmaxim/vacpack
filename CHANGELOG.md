@@ -4,6 +4,20 @@ Notable changes to Vacpack. The format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-18
+
+### Fixed
+
+- The icon's shadows fall down, under the tile and the pouch; they were cast upward and showed as a dark band above the icon.
+
+### Added
+
+- `scripts/install.sh` installs the built DMG into Applications and restarts the Dock, so it does not keep a blank cached icon.
+
+### Changed
+
+- BUILD.md and README install with `scripts/install.sh`; `scripts/package.sh --open` stays for looking at the DMG and installing by hand.
+
 ## [0.2.0] - 2026-10-18
 
 ### Added

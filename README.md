@@ -2,7 +2,7 @@
 
 Vacpack is a native macOS app and command-line tool that makes images, videos and GIFs smaller, entirely offline. Like vacuum packing: everything the file does not need is pumped out.
 
-**Version:** `0.2.0`, released 18.10.2026 · [changelog](CHANGELOG.md) · [how versions are managed](VERSION_MANAGEMENT.md)
+**Version:** `0.2.1`, released 18.10.2026 · [changelog](CHANGELOG.md) · [how versions are managed](VERSION_MANAGEMENT.md)
 
 > **Status: early development.** Image, video and GIF compression work in the app and the CLI. PDF, EPUB, presets, the notch Drop Zone, folder monitoring and the rest are planned — see [the stage plan](docs/PLAN.md).
 
@@ -41,11 +41,11 @@ The app icon is drawn in code (`design/AppIcon.swift`); `scripts/make-icon.sh` r
 ## Install on your Mac
 
 ```bash
-scripts/package.sh          # build Release and pack .build/dist/Vacpack-<version>.dmg
-scripts/package.sh --open   # the same, then open the DMG in Finder
+scripts/package.sh   # build Release and pack .build/dist/Vacpack-<version>.dmg
+scripts/install.sh   # install that DMG into Applications and refresh the Dock icon
 ```
 
-Drag **Vacpack** into **Applications** from the opened DMG. The app is a universal build (Apple Silicon and Intel). Each run stamps a new build number (UTC date and time), so a reinstalled app never shows the Dock icon of an earlier build.
+The app is a universal build (Apple Silicon and Intel). `install.sh` restarts the Dock, which otherwise can keep a blank cached icon after a reinstall. To install by hand instead, `scripts/package.sh --open` opens the DMG in Finder; drag **Vacpack** into **Applications**.
 
 The build is ad-hoc signed, not notarized: it opens without warnings on the Mac that built it, while on other Macs macOS blocks it until you choose **System Settings → Privacy & Security → Open Anyway**. Those Macs also need the Homebrew tools listed above.
 

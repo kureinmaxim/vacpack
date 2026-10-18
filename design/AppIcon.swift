@@ -17,7 +17,8 @@ let ctx = CGContext(
     data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0, space: space,
     bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
 ctx.scaleBy(x: s, y: s)
-// Work top-down like a design tool.
+// Work top-down like a design tool. Shadow offsets ignore this flip (they are in base space),
+// so a shadow that falls down needs a negative height.
 ctx.translateBy(x: 0, y: 1024)
 ctx.scaleBy(x: 1, y: -1)
 
@@ -37,7 +38,7 @@ func gradient(_ colors: [CGColor], _ locations: [CGFloat]) -> CGGradient {
 let tile = CGRect(x: 100, y: 100, width: 824, height: 824)
 let tilePath = CGPath(roundedRect: tile, cornerWidth: 186, cornerHeight: 186, transform: nil)
 ctx.saveGState()
-ctx.setShadow(offset: CGSize(width: 0, height: 14), blur: 28, color: color(0x000000, 0.35))
+ctx.setShadow(offset: CGSize(width: 0, height: -14), blur: 28, color: color(0x000000, 0.35))
 ctx.addPath(tilePath)
 ctx.setFillColor(color(0xA9761F))
 ctx.fillPath()
@@ -80,7 +81,7 @@ pouch.addCurve(
 pouch.closeSubpath()
 
 ctx.saveGState()
-ctx.setShadow(offset: CGSize(width: 0, height: 22), blur: 36, color: color(0x5A3410, 0.45))
+ctx.setShadow(offset: CGSize(width: 0, height: -22), blur: 36, color: color(0x5A3410, 0.45))
 ctx.addPath(pouch)
 ctx.setFillColor(color(0xFAFCFD))
 ctx.fillPath()
@@ -165,7 +166,7 @@ for tooth in 0..<teeth {
 seal.addLine(to: CGPoint(x: right + 8, y: top + 18))
 seal.closeSubpath()
 ctx.saveGState()
-ctx.setShadow(offset: CGSize(width: 0, height: 6), blur: 10, color: color(0x5A3410, 0.25))
+ctx.setShadow(offset: CGSize(width: 0, height: -6), blur: 10, color: color(0x5A3410, 0.25))
 ctx.addPath(seal)
 ctx.setFillColor(color(0xF3F6F8))
 ctx.fillPath()
@@ -182,7 +183,7 @@ for y in [top - 6, top + 6] {
 
 let valve = CGPoint(x: 512, y: 368)
 ctx.saveGState()
-ctx.setShadow(offset: CGSize(width: 0, height: 6), blur: 12, color: color(0x5A3410, 0.4))
+ctx.setShadow(offset: CGSize(width: 0, height: -6), blur: 12, color: color(0x5A3410, 0.4))
 ctx.setFillColor(color(0x7A3A1C))
 ctx.fillEllipse(in: CGRect(x: valve.x - 46, y: valve.y - 46, width: 92, height: 92))
 ctx.restoreGState()

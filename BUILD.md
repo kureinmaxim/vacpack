@@ -100,8 +100,8 @@ python3 scripts/update_version.py status
 ## Шаг 5. Release и DMG
 
 ```bash
-scripts/package.sh          # → .build/dist/Vacpack-X.Y.Z.dmg
-scripts/package.sh --open   # то же и открыть DMG в Finder
+scripts/package.sh   # → .build/dist/Vacpack-X.Y.Z.dmg
+scripts/install.sh   # поставить этот DMG в «Программы»
 ```
 
 Что делает `package.sh`:
@@ -115,7 +115,9 @@ scripts/package.sh --open   # то же и открыть DMG в Finder
 
 В конце печатает строку вида `Created .build/dist/Vacpack-0.1.0.dmg (3.7M, version 0.1.0, build 20261018.144243, x86_64 arm64)`.
 
-**Установка:** закройте Vacpack, если он запущен, откройте DMG и перетащите **Vacpack** в **Программы** с заменой.
+**Установка на этот Mac** — `scripts/install.sh`. Он закрывает запущенный Vacpack, перекладывает прежнюю копию в Корзину (ничего не удаляет), копирует новую из DMG, заново регистрирует её в Launch Services, «забывает» копии в Корзине и перезапускает Dock. Без этого Dock может показывать пустую иконку из кэша, даже при новом номере сборки.
+
+`scripts/package.sh --open` вместо этого открывает DMG в Finder — чтобы посмотреть его так, как увидят другие, и поставить вручную перетаскиванием. Для своего Mac это хуже `install.sh` (Dock не обновится), а DMG, который вы будете публиковать, в Finder лучше не открывать: однажды после этого локальный файл изменился, и его контрольная сумма перестала совпадать. Опубликованные копии остались верными, но проверяйте копию.
 
 ## Иконка
 
@@ -143,7 +145,7 @@ scripts/make-icon.sh
 
 **`package failed: version files are out of sync`** — кто-то поправил версию руками. `python3 scripts/update_version.py status` покажет файл, `sync` вернёт версию из `project.yml`.
 
-**В Dock старая иконка** — установите свежую сборку из `package.sh`: у неё новый номер сборки, и macOS перечитает иконку. Если всё равно старая:
+**В Dock старая или пустая иконка** — ставьте через `scripts/install.sh`: он перезапускает Dock. Если иконка всё равно старая:
 
 ```bash
 touch /Applications/Vacpack.app
