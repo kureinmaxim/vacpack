@@ -32,6 +32,17 @@ open Vacpack.xcodeproj
 
 `Vacpack.xcodeproj` is generated from `project.yml` with XcodeGen and is not committed.
 
+## Install on your Mac
+
+```bash
+scripts/package.sh          # build Release and pack .build/dist/Vacpack-<version>.dmg
+scripts/package.sh --open   # the same, then open the DMG in Finder
+```
+
+Drag **Vacpack** into **Applications** from the opened DMG. The app is a universal build (Apple Silicon and Intel).
+
+The build is ad-hoc signed, not notarized: it opens without warnings on the Mac that built it, while on other Macs macOS blocks it until you choose **System Settings → Privacy & Security → Open Anyway**. Those Macs also need the Homebrew tools listed above.
+
 ## Command line
 
 The engines are a Swift package (`Packages/CompressorKit`) with a `vacpack` command:
