@@ -34,6 +34,8 @@ open Vacpack.xcodeproj
 
 `Vacpack.xcodeproj` is generated from `project.yml` with XcodeGen and is not committed.
 
+The step-by-step build guide, from a fresh clone to the DMG, with common problems: [BUILD.md](BUILD.md) (in Russian).
+
 The app icon is drawn in code (`design/AppIcon.swift`); `scripts/make-icon.sh` renders every macOS size into the asset catalog.
 
 ## Install on your Mac
@@ -67,6 +69,8 @@ swift run --package-path Packages/CompressorKit vacpack gif animation.gif --qual
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — design decisions and module layout
 - [docs/PLAN.md](docs/PLAN.md) — stages with acceptance criteria
 - [docs/QUALITY.md](docs/QUALITY.md) — encoder parameters per quality level and measurements
+- [BUILD.md](BUILD.md) — how to build, test and package
+- [VERSION_MANAGEMENT.md](VERSION_MANAGEMENT.md) — how versions are changed and kept in sync
 
 Vacpack is an independent implementation written from scratch; it contains no code from other compression apps and is not affiliated with them.
 

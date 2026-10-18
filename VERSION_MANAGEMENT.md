@@ -2,7 +2,7 @@
 
 Как Vacpack хранит версию, как её менять и какие файлы держатся в согласии.
 
-Связано: [CHANGELOG.md](CHANGELOG.md) · [README.md](README.md#install-on-your-mac) (сборка DMG)
+Связано: [BUILD.md](BUILD.md) · [CHANGELOG.md](CHANGELOG.md) · [README.md](README.md)
 
 ## Источник правды
 
