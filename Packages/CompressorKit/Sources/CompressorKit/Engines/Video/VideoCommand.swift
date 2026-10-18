@@ -26,11 +26,14 @@ enum VideoContainer: String, Sendable, CaseIterable {
 enum VideoOutput: Equatable, Sendable {
     case video(VideoContainer)
     case mp3
+    /// Produced by `GIFEngine`, never by `VideoCommand`.
+    case gif
 
     var fileExtension: String {
         switch self {
         case .video(let container): container.fileExtension
         case .mp3: "mp3"
+        case .gif: "gif"
         }
     }
 
@@ -44,6 +47,7 @@ enum VideoOutput: Equatable, Sendable {
         case .mov: return .video(.mov)
         case .webm: return .video(.webm)
         case .mp3: return .mp3
+        case .gif: return .gif
         case .same:
             switch inputExtension.lowercased() {
             case "mov", "qt": return .video(.mov)
@@ -112,6 +116,7 @@ struct VideoCommand: Equatable {
         if let decoder = info.alphaDecoder { args += ["-c:v", decoder] }
         args += ["-i", input.path]
 
+        if output == .gif { preconditionFailure("video → GIF is handled by GIFEngine") }
         guard case .video(let container) = output else {
             guard !info.audioCodecs.isEmpty else { throw VideoError.noAudioTrack }
             // SPEC §7: best VBR (V0), channels as in the source.

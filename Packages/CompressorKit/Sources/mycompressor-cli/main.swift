@@ -6,7 +6,8 @@ let usage = """
     Commands:
       tools [--json]            Show the external tools the engines use, where they are and their versions
       image <files|folders>...  Compress images (run `image --help` for options)
-      video <files|folders>...  Compress or convert videos, extract MP3 (run `video --help` for options)
+      video <files|folders>...  Compress or convert videos, make GIFs, extract MP3 (`video --help`)
+      gif <files|folders>...    Compress animated GIFs (run `gif --help` for options)
       --help                    Show this help
     """
 
@@ -23,6 +24,8 @@ case "image":
     exit(await runCompress(kind: .image, Array(arguments.dropFirst())))
 case "video":
     exit(await runCompress(kind: .video, Array(arguments.dropFirst())))
+case "gif":
+    exit(await runCompress(kind: .gif, Array(arguments.dropFirst())))
 case nil, "--help", "-h", "help":
     print(usage)
     exit(arguments.isEmpty ? 1 : 0)

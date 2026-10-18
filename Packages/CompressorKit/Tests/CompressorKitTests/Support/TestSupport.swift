@@ -144,6 +144,7 @@ let allImageToolsInstalled =
 func makePipeline(trashBin: URL) -> CompressionPipeline {
     CompressionPipeline(
         image: ImageEngine(tools: installedImageTools), video: VideoEngine(locator: ToolLocator()),
+        gif: GIFEngine(locator: ToolLocator()),
         trasher: RecordingTrasher(bin: trashBin))
 }
 

@@ -51,8 +51,17 @@ final class LaunchTests: XCTestCase {
         }
     }
 
+    /// Converts a short video to GIF through the app (GIF engine on the heavy queue).
+    func testConvertsVideoToGIF() throws {
+        try runVideoJob(format: "gif", expecting: "clip_compressed.gif")
+    }
+
     /// Compresses a short video through the app's video queue.
     func testCompressesVideo() throws {
+        try runVideoJob(format: nil, expecting: "clip_compressed.mp4")
+    }
+
+    private func runVideoJob(format: String?, expecting outputName: String) throws {
         let ffmpeg = "/opt/homebrew/bin/ffmpeg"
         try XCTSkipUnless(FileManager.default.isExecutableFile(atPath: ffmpeg), "needs ffmpeg")
         let folder = FileManager.default.temporaryDirectory.appending(path: "MyCompressorUITest-\(UUID().uuidString)")
@@ -71,6 +80,7 @@ final class LaunchTests: XCTestCase {
 
         let app = XCUIApplication()
         app.launchEnvironment["MYCOMPRESSOR_UITEST_FILES"] = clip.path
+        if let format { app.launchEnvironment["MYCOMPRESSOR_UITEST_VIDEO_FORMAT"] = format }
         app.launch()
         let detail = app.descendants(matching: .any).matching(identifier: "fileDetail").firstMatch
         XCTAssertTrue(detail.waitForExistence(timeout: 10))
@@ -84,7 +94,7 @@ final class LaunchTests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.5)
         } while Date() < deadline
         XCTAssertTrue(text.contains("→"), "row: \(text)")
-        XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appending(path: "clip_compressed.mp4").path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appending(path: outputName).path))
     }
 
     /// A noisy high-quality JPEG that the default settings will shrink.

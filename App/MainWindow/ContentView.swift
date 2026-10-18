@@ -35,10 +35,15 @@ struct ContentView: View {
         .onAppear(perform: addFilesFromUITest)
     }
 
-    /// UI tests cannot drag files in; they pass paths in an environment variable instead (Debug only).
+    /// UI tests cannot drag files in or pick menus reliably; they pass paths and the video format
+    /// in environment variables instead (Debug only).
     private func addFilesFromUITest() {
         #if DEBUG
-            if let paths = ProcessInfo.processInfo.environment["MYCOMPRESSOR_UITEST_FILES"] {
+            let environment = ProcessInfo.processInfo.environment
+            if let format = environment["MYCOMPRESSOR_UITEST_VIDEO_FORMAT"].flatMap(VideoFormatChoice.init) {
+                model.videoSettings.format = format
+            }
+            if let paths = environment["MYCOMPRESSOR_UITEST_FILES"] {
                 model.add(paths.split(separator: ":").map { URL(filePath: String($0)) })
             }
         #endif
@@ -51,7 +56,7 @@ struct ContentView: View {
                 .foregroundStyle(.secondary)
             Text("Drop images, videos or folders here")
                 .font(.title2)
-            Text("JPEG, PNG, WebP, AVIF, HEIC, TIFF, BMP, DNG, SVG · MP4, MOV, WebM, MKV, AVI…")
+            Text("JPEG, PNG, WebP, AVIF, HEIC, TIFF, BMP, DNG, SVG · GIF · MP4, MOV, WebM, MKV, AVI…")
                 .foregroundStyle(.secondary)
             Button("Choose Files…", action: chooseFiles)
                 .padding(.top, 6)
@@ -166,6 +171,9 @@ private struct OptionsBar: View {
             }
             if model.hasVideos {
                 VideoOptionsRow(model: model)
+            }
+            if model.showsGIFOptions {
+                GIFOptionsRow(model: model)
             }
             HStack(spacing: 14) {
                 Toggle("Remove originals", isOn: $model.output.removeInput)
@@ -286,6 +294,7 @@ private struct VideoOptionsRow: View {
                 Text("MP4").tag(VideoFormatChoice.mp4)
                 Text("WebM").tag(VideoFormatChoice.webm)
                 Text("MOV").tag(VideoFormatChoice.mov)
+                Text("GIF").tag(VideoFormatChoice.gif)
                 Text("MP3 (audio)").tag(VideoFormatChoice.mp3)
             }
             .fixedSize()
@@ -299,6 +308,68 @@ private struct VideoOptionsRow: View {
             Spacer()
         }
         .onChange(of: resolution) { model.videoSettings.resolution = resolution.value }
+    }
+}
+
+private struct GIFOptionsRow: View {
+    @Bindable var model: CompressionModel
+
+    enum Size: Hashable, Identifiable {
+        case same, p75, p50, p25, percentage, maxWidth
+        var id: Self { self }
+        var title: String {
+            switch self {
+            case .same: "Same as input"
+            case .p75: "75%"
+            case .p50: "50%"
+            case .p25: "25%"
+            case .percentage: "Percentage"
+            case .maxWidth: "Max width"
+            }
+        }
+    }
+
+    @State private var size = Size.same
+    @State private var value = 480
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Label("GIF", systemImage: "square.stack").labelStyle(.titleAndIcon).frame(width: 80, alignment: .leading)
+            Picker("Quality", selection: $model.gifSettings.quality) {
+                ForEach(QualityLevel.allCases, id: \.self) { Text($0.label).tag($0) }
+            }
+            .fixedSize()
+            Picker("Size", selection: $size) {
+                ForEach([Size.same, .p75, .p50, .p25, .percentage, .maxWidth]) { Text($0.title).tag($0) }
+            }
+            .fixedSize()
+            if size == .percentage || size == .maxWidth {
+                TextField("Value", value: $value, format: .number).frame(width: 64)
+                Text(size == .percentage ? "%" : "px").foregroundStyle(.secondary)
+            }
+            if model.hasVideos && model.videoSettings.format == .gif {
+                Stepper(
+                    "FPS \(model.gifSettings.fps)", value: $model.gifSettings.fps, in: GIFSettings.fpsRange, step: 5
+                )
+                .help("Frame rate for videos converted to GIF")
+            }
+            Spacer()
+        }
+        .onChange(of: size) { apply() }
+        .onChange(of: value) { apply() }
+    }
+
+    private func apply() {
+        let n = max(1, value)
+        model.gifSettings.dimension =
+            switch size {
+            case .same: .same
+            case .p75: .percentage(75)
+            case .p50: .percentage(50)
+            case .p25: .percentage(25)
+            case .percentage: .percentage(min(100, n))
+            case .maxWidth: .maxWidth(n)
+            }
     }
 }
 

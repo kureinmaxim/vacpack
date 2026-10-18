@@ -2,7 +2,7 @@ import CompressorKit
 import Foundation
 import Observation
 
-/// State of the main window: the file list, the options and the queues (images and videos).
+/// State of the main window: the file list, the options and the queues (images; videos and GIFs).
 @MainActor
 @Observable
 final class CompressionModel {
@@ -24,13 +24,16 @@ final class CompressionModel {
     var items: [Item] = []
     var imageSettings = ImageSettings()
     var videoSettings = VideoSettings()
+    var gifSettings = GIFSettings()
     var videoEncoding = VideoEncodingOptions()
     var output = OutputPolicy()
     var metadata = MetadataOptions()
     let missingTools: [Tool]
 
-    /// Videos run one at a time: ffmpeg already uses every core and the media engine.
-    @ObservationIgnored private let queues: [FileKind: JobQueue]
+    /// Images run in parallel. Videos and GIFs run one at a time: ffmpeg and gifski already use
+    /// every core (and VideoToolbox the media engine).
+    @ObservationIgnored private let imageQueue: JobQueue
+    @ObservationIgnored private let heavyQueue: JobQueue
     @ObservationIgnored private var itemForJob: [Job.ID: Item.ID] = [:]
     @ObservationIgnored private var eventTasks: [Task<Void, Never>] = []
     /// Jobs enqueued and not finished yet.
@@ -38,13 +41,13 @@ final class CompressionModel {
 
     init(locator: ToolLocator = ToolLocator()) {
         let pipeline = CompressionPipeline.standard(locator: locator)
-        queues = [
-            .image: JobQueue(processor: pipeline),
-            .video: JobQueue(processor: pipeline, maxConcurrent: 1),
-        ]
-        missingTools = [Tool.pngquant, .cwebp, .avifenc, .ffmpeg, .ffprobe].filter { locator.locate($0) == nil }
+        imageQueue = JobQueue(processor: pipeline)
+        heavyQueue = JobQueue(processor: pipeline, maxConcurrent: 1)
+        missingTools = [Tool.pngquant, .cwebp, .avifenc, .ffmpeg, .ffprobe, .gifski].filter {
+            locator.locate($0) == nil
+        }
         // One long-lived subscriber per queue: an AsyncStream ends when its iterator goes away.
-        eventTasks = queues.values.map { queue in
+        eventTasks = [imageQueue, heavyQueue].map { queue in
             Task { [weak self] in
                 for await event in queue.events {
                     self?.handle(event)
@@ -57,6 +60,17 @@ final class CompressionModel {
     var canCompress: Bool { !isCompressing && items.contains { $0.state == .ready } }
     var hasImages: Bool { items.contains { $0.kind == .image } }
     var hasVideos: Bool { items.contains { $0.kind == .video } }
+    var hasGIFs: Bool { items.contains { $0.kind == .gif } }
+    /// GIF options matter for GIF inputs and for videos converted to GIF.
+    var showsGIFOptions: Bool { hasGIFs || (hasVideos && videoSettings.format == .gif) }
+
+    private func queue(for kind: FileKind) -> JobQueue? {
+        switch kind {
+        case .image: imageQueue
+        case .video, .gif: heavyQueue
+        case .pdf, .epub: nil
+        }
+    }
 
     var totalSaved: (input: Int64, output: Int64)? {
         let results = items.compactMap { item -> CompressionResult? in
@@ -69,7 +83,7 @@ final class CompressionModel {
     func add(_ urls: [URL]) {
         let known = Set(items.map(\.url.standardizedFileURL))
         for url in FileCollector.collect(urls) {
-            guard let kind = FileKind.detect(url), queues[kind] != nil, !known.contains(url.standardizedFileURL)
+            guard let kind = FileKind.detect(url), queue(for: kind) != nil, !known.contains(url.standardizedFileURL)
             else { continue }
             let bytes = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.int64Value
             items.append(Item(url: url, kind: kind, inputBytes: bytes ?? 0))
@@ -80,25 +94,24 @@ final class CompressionModel {
         let ready = items.indices.filter { items[$0].state == .ready }
         guard !ready.isEmpty else { return }
         // Map jobs to rows before enqueuing, so no early event can miss its row.
-        var jobsByKind: [FileKind: [Job]] = [:]
+        var imageJobs: [Job] = []
+        var heavyJobs: [Job] = []
         for index in ready {
             let request = JobRequest(
-                input: items[index].url, image: imageSettings, video: videoSettings, output: output,
+                input: items[index].url, image: imageSettings, video: videoSettings, gif: gifSettings, output: output,
                 metadata: metadata, videoEncoding: videoEncoding)
             let job = Job(request: request)
             itemForJob[job.id] = items[index].id
             items[index].state = .queued
-            jobsByKind[items[index].kind, default: []].append(job)
+            if items[index].kind == .image { imageJobs.append(job) } else { heavyJobs.append(job) }
         }
         outstanding += ready.count
-        for (kind, jobs) in jobsByKind {
-            guard let queue = queues[kind] else { continue }
-            Task { await queue.enqueue(jobs) }
-        }
+        if !imageJobs.isEmpty { Task { [imageQueue] in await imageQueue.enqueue(imageJobs) } }
+        if !heavyJobs.isEmpty { Task { [heavyQueue] in await heavyQueue.enqueue(heavyJobs) } }
     }
 
     func cancel() {
-        for queue in queues.values { Task { await queue.cancelAll() } }
+        for queue in [imageQueue, heavyQueue] { Task { await queue.cancelAll() } }
     }
 
     func clear() {

@@ -40,6 +40,20 @@ struct ProcessRunnerTests {
         #expect(result.stdoutString == "one\ntwo\nthree")
     }
 
+    @Test func carriageReturnsAlsoEndLines() async throws {
+        final class Lines: @unchecked Sendable {
+            let lock = NSLock()
+            var all: [String] = []
+        }
+        let lines = Lines()
+        _ = try await runner.run(
+            sh, arguments: ["-c", "printf 'Frame 1 / 3\\rFrame 2 / 3\\rFrame 3 / 3\\r\\ndone\\n'"]
+        ) {
+            line in lines.lock.withLock { lines.all.append(line) }
+        }
+        #expect(lines.lock.withLock { lines.all } == ["Frame 1 / 3", "Frame 2 / 3", "Frame 3 / 3", "done"])
+    }
+
     @Test func checkedThrowsOnNonZeroExit() async throws {
         let result = try await runner.run(URL(filePath: "/usr/bin/false"))
         #expect(throws: ProcessRunnerError.nonZeroExit(code: 1, stderr: "")) {

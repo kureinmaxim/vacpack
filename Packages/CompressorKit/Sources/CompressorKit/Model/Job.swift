@@ -6,6 +6,8 @@ public struct JobRequest: Sendable, Hashable {
     public var input: URL
     public var image: ImageSettings
     public var video: VideoSettings
+    /// GIF inputs, and videos whose format is `.gif`.
+    public var gif: GIFSettings
     public var output: OutputPolicy
     public var metadata: MetadataOptions
     /// App-wide video settings (codec, FPS cap, hardware acceleration, threads).
@@ -13,12 +15,14 @@ public struct JobRequest: Sendable, Hashable {
 
     public init(
         input: URL, image: ImageSettings = ImageSettings(), video: VideoSettings = VideoSettings(),
-        output: OutputPolicy = OutputPolicy(), metadata: MetadataOptions = MetadataOptions(),
+        gif: GIFSettings = GIFSettings(), output: OutputPolicy = OutputPolicy(),
+        metadata: MetadataOptions = MetadataOptions(),
         videoEncoding: VideoEncodingOptions = VideoEncodingOptions()
     ) {
         self.input = input
         self.image = image
         self.video = video
+        self.gif = gif
         self.output = output
         self.metadata = metadata
         self.videoEncoding = videoEncoding

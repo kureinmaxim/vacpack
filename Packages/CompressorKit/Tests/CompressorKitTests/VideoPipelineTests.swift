@@ -314,7 +314,10 @@ struct VideoPipelineTests {
         #expect(await task.value == .cancelled(input: input))
         #expect(ContinuousClock.now - started < .seconds(5))
         #expect(dir.contents() == ["long.mp4"])
-        let leftovers = try await ProcessRunner().run(URL(filePath: "/usr/bin/pgrep"), arguments: ["-f", input.path])
+        // Only this test process's children, matched by the unique input path.
+        let leftovers = try await ProcessRunner().run(
+            URL(filePath: "/usr/bin/pgrep"),
+            arguments: ["-P", String(ProcessInfo.processInfo.processIdentifier), "-f", input.path])
         #expect(leftovers.stdoutString.isEmpty, "ffmpeg still running: \(leftovers.stdoutString)")
     }
 }

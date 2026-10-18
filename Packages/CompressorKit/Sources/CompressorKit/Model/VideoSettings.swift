@@ -1,8 +1,8 @@
 import Foundation
 
-/// Output format choice for videos (SPEC §2). GIF arrives in stage 3.
+/// Output format choice for videos (SPEC §2). GIF output uses `GIFSettings` (SPEC §4).
 public enum VideoFormatChoice: String, Codable, Sendable, CaseIterable {
-    case same, mp4, webm, mov, mp3
+    case same, mp4, webm, mov, gif, mp3
 }
 
 /// Resolution choices from SPEC §2. Videos are only ever scaled down; aspect ratio is kept.

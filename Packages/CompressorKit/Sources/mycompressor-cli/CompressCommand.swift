@@ -31,7 +31,7 @@ let videoUsage = """
     Usage: mycompressor-cli video <files|folders>... [options]
 
     Options:
-      --format <f>            same | mp4 | webm | mov | mp3                 (default: same)
+      --format <f>            same | mp4 | webm | mov | gif | mp3           (default: same)
       --resolution <r>        same | 4k | 1080p | 720p                      (default: same)
       --max-width <px>        Also: --max-height, --max-long-edge, --max-short-edge
       --codec <c>             h264 | hevc                                   (default: h264)
@@ -40,6 +40,18 @@ let videoUsage = """
       --threads <n>           CPU threads for software encoders
       --remove-audio          Drop all audio tracks
       --keep-transparency     Keep the alpha channel in MOV output (WebM always keeps it)
+      --gif-fps <n>           Frame rate for --format gif, 10–50           (default: 20)
+      --gif-percent <n>       Scale the GIF to n% (never upscales)
+      --gif-max-width <px>    Limit the GIF width
+    \(commonOptionsHelp)
+    """
+
+let gifUsage = """
+    Usage: mycompressor-cli gif <files|folders>... [options]
+
+    Options:
+      --percent <n>           Scale to n% (never upscales)
+      --max-width <px>        Limit the width (never upscales)
     \(commonOptionsHelp)
     """
 
@@ -47,12 +59,13 @@ struct CommandError: Error, CustomStringConvertible {
     let description: String
 }
 
-/// Options shared by `image` and `video`, plus each kind's own.
+/// Options shared by `image`, `video` and `gif`, plus each kind's own.
 struct CompressOptions {
     let kind: FileKind
     var paths: [URL] = []
     var image = ImageSettings()
     var video = VideoSettings()
+    var gif = GIFSettings()
     var encoding = VideoEncodingOptions()
     var output = OutputPolicy()
     var metadata = MetadataOptions()
@@ -81,6 +94,7 @@ struct CompressOptions {
             return parsed
         }
         let isVideo = kind == .video
+        let isGIF = kind == .gif
 
         while let argument = iterator.next() {
             switch argument {
@@ -89,6 +103,7 @@ struct CompressOptions {
                 let quality = try choice(argument, QualityLevel.self)
                 image.quality = quality
                 video.quality = quality
+                gif.quality = quality
             case "--subfolder": output.location = .subfolder(try value(argument))
             case "--output-dir":
                 output.location = .custom(URL(filePath: try value(argument), directoryHint: .isDirectory))
@@ -101,25 +116,28 @@ struct CompressOptions {
             case "--no-subfolders": includeSubfolders = false
             case "--jobs": jobs = try number(argument)
             case "--json": json = true
-            // Size limits mean the same for both kinds.
-            case "--max-width":
+            // GIF only
+            case "--percent" where isGIF: gif.dimension = .percentage(min(100, try number(argument)))
+            case "--max-width" where isGIF: gif.dimension = .maxWidth(try number(argument))
+            // Size limits mean the same for images and videos.
+            case "--max-width" where !isGIF:
                 let n = try number(argument)
                 if isVideo { video.resolution = .maxWidth(n) } else { image.resize = .maxWidth(n) }
-            case "--max-height":
+            case "--max-height" where !isGIF:
                 let n = try number(argument)
                 if isVideo { video.resolution = .maxHeight(n) } else { image.resize = .maxHeight(n) }
-            case "--max-long-edge":
+            case "--max-long-edge" where !isGIF:
                 let n = try number(argument)
                 if isVideo { video.resolution = .maxLongEdge(n) } else { image.resize = .maxLongEdge(n) }
-            case "--max-short-edge":
+            case "--max-short-edge" where !isGIF:
                 let n = try number(argument)
                 if isVideo { video.resolution = .maxShortEdge(n) } else { image.resize = .maxShortEdge(n) }
             case "--format" where isVideo: video.format = try choice(argument, VideoFormatChoice.self)
-            case "--format": image.format = try choice(argument, ImageFormatChoice.self)
+            case "--format" where !isGIF: image.format = try choice(argument, ImageFormatChoice.self)
             // Image only
-            case "--percent" where !isVideo: image.resize = .percentage(min(100, try number(argument)))
-            case "--keep-metadata" where !isVideo: metadata.retainImageMetadata = true
-            case "--keep-icc" where !isVideo: metadata.preserveColorProfile = true
+            case "--percent" where !isVideo && !isGIF: image.resize = .percentage(min(100, try number(argument)))
+            case "--keep-metadata" where !isVideo && !isGIF: metadata.retainImageMetadata = true
+            case "--keep-icc" where !isVideo && !isGIF: metadata.preserveColorProfile = true
             // Video only
             case "--resolution" where isVideo:
                 let raw = try value(argument)
@@ -136,6 +154,14 @@ struct CompressOptions {
             case "--threads" where isVideo: encoding.threads = try number(argument)
             case "--remove-audio" where isVideo: video.removeAudio = true
             case "--keep-transparency" where isVideo: video.preserveTransparency = true
+            case "--gif-fps" where isVideo:
+                let fps = try number(argument)
+                guard GIFSettings.fpsRange.contains(fps) else {
+                    throw CommandError(description: "--gif-fps must be between 10 and 50")
+                }
+                gif.fps = fps
+            case "--gif-percent" where isVideo: gif.dimension = .percentage(min(100, try number(argument)))
+            case "--gif-max-width" where isVideo: gif.dimension = .maxWidth(try number(argument))
             default:
                 guard !argument.hasPrefix("--") else {
                     throw CommandError(description: "Unknown option for \(kind.rawValue): \(argument)")
@@ -148,7 +174,12 @@ struct CompressOptions {
 }
 
 func runCompress(kind: FileKind, _ arguments: [String]) async -> Int32 {
-    let usage = kind == .video ? videoUsage : imageUsage
+    let usage =
+        switch kind {
+        case .video: videoUsage
+        case .gif: gifUsage
+        default: imageUsage
+        }
     if arguments.isEmpty || arguments.contains("--help") {
         print(usage)
         return arguments.isEmpty ? 1 : 0
@@ -168,16 +199,17 @@ func runCompress(kind: FileKind, _ arguments: [String]) async -> Int32 {
         return 1
     }
 
-    let queue = JobQueue(processor: CompressionPipeline.standard(), maxConcurrent: kind == .video ? 1 : options.jobs)
+    let heavy = kind == .video || kind == .gif
+    let queue = JobQueue(processor: CompressionPipeline.standard(), maxConcurrent: heavy ? 1 : options.jobs)
     let jobs = files.map {
         Job(
             request: JobRequest(
-                input: $0, image: options.image, video: options.video, output: options.output,
+                input: $0, image: options.image, video: options.video, gif: options.gif, output: options.output,
                 metadata: options.metadata, videoEncoding: options.encoding))
     }
     await queue.enqueue(jobs)
     var outcomes: [Job.ID: JobOutcome] = [:]
-    let showProgress = kind == .video && !options.json && isatty(STDERR_FILENO) != 0
+    let showProgress = heavy && !options.json && isatty(STDERR_FILENO) != 0
     for await event in queue.events {
         switch event {
         case .progress(let id, let fraction) where showProgress:

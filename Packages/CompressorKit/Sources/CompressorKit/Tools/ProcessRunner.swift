@@ -218,13 +218,15 @@ private final class StreamCollector: @unchecked Sendable {
     }
 
     /// Caller holds `lock`. Returns complete lines from `chunk`, keeping the unfinished tail.
+    /// Both `\n` and `\r` end a line (progress bars redraw with `\r`); empty lines are skipped.
     private func splitLines(appending chunk: Data) -> [String] {
         guard onLine != nil else { return [] }
         partialLine.append(chunk)
         var lines: [String] = []
-        while let newline = partialLine.firstIndex(of: UInt8(ascii: "\n")) {
-            lines.append(String(decoding: partialLine[partialLine.startIndex..<newline], as: UTF8.self))
-            partialLine.removeSubrange(partialLine.startIndex...newline)
+        while let end = partialLine.firstIndex(where: { $0 == UInt8(ascii: "\n") || $0 == UInt8(ascii: "\r") }) {
+            let line = partialLine[partialLine.startIndex..<end]
+            if !line.isEmpty { lines.append(String(decoding: line, as: UTF8.self)) }
+            partialLine.removeSubrange(partialLine.startIndex...end)
         }
         return lines
     }

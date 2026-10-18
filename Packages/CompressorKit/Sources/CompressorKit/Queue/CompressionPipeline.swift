@@ -9,25 +9,29 @@ public protocol JobProcessing: Sendable {
 public struct CompressionPipeline: JobProcessing {
     let image: ImageEngine
     let video: VideoEngine
+    let gif: GIFEngine
     let writer: OutputWriter
 
-    public init(image: ImageEngine, video: VideoEngine, trasher: any FileTrasher = SystemTrasher()) {
+    public init(image: ImageEngine, video: VideoEngine, gif: GIFEngine, trasher: any FileTrasher = SystemTrasher()) {
         self.image = image
         self.video = video
+        self.gif = gif
         self.writer = OutputWriter(trasher: trasher)
     }
 
     /// A pipeline with tools found by `ToolLocator`.
     public static func standard(locator: ToolLocator = ToolLocator()) -> CompressionPipeline {
         CompressionPipeline(
-            image: ImageEngine(tools: ImageTools(locator: locator)), video: VideoEngine(locator: locator))
+            image: ImageEngine(tools: ImageTools(locator: locator)), video: VideoEngine(locator: locator),
+            gif: GIFEngine(locator: locator))
     }
 
     public func process(_ request: JobRequest, progress: @escaping @Sendable (Double) -> Void) async -> JobOutcome {
         let input = request.input
-        let kind = FileKind.detect(input)
-        // Later stages add GIF, PDF and EPUB engines.
-        guard kind == .image || kind == .video else { return .unsupported(input: input, kind: kind) }
+        // Later stages add PDF and EPUB engines.
+        guard let kind = FileKind.detect(input), [.image, .video, .gif].contains(kind) else {
+            return .unsupported(input: input, kind: FileKind.detect(input))
+        }
 
         var workDirectory: URL?
         defer { if let workDirectory { try? FileManager.default.removeItem(at: workDirectory) } }
@@ -41,7 +45,13 @@ public struct CompressionPipeline: JobProcessing {
 
             let encoded: EncodedFile
             let quality: QualityLevel
-            if kind == .video {
+            // GIF inputs and video → GIF both use the GIF settings (SPEC §4).
+            let makesGIF = kind == .gif || (kind == .video && request.video.format == .gif)
+            if makesGIF {
+                quality = request.gif.quality
+                encoded = try await gif.encode(
+                    input, isVideo: kind == .video, settings: request.gif, workDirectory: work, progress: progress)
+            } else if kind == .video {
                 quality = request.video.quality
                 encoded = try await video.encode(
                     input, settings: request.video, options: request.videoEncoding, workDirectory: work,

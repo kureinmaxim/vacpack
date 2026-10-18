@@ -21,6 +21,8 @@ open MyCompressor.xcodeproj
 swift run --package-path Packages/CompressorKit mycompressor-cli tools
 swift run --package-path Packages/CompressorKit mycompressor-cli image photos/ --format webp --max-long-edge 2000
 swift run --package-path Packages/CompressorKit mycompressor-cli video clip.mov --format mp4 --resolution 1080p
+swift run --package-path Packages/CompressorKit mycompressor-cli video clip.mov --format gif --gif-fps 15 --gif-max-width 480
+swift run --package-path Packages/CompressorKit mycompressor-cli gif animation.gif --quality good --percent 50
 ```
 
 `MyCompressor.xcodeproj` генерируется из `project.yml` и в git не хранится.
