@@ -84,7 +84,8 @@ protocol CompressionEngine: Sendable {
 - параллелизм ограничен настройкой ядер CPU (SPEC §2);
 - **Pause after current file**, **Resume (N files)**, **Cancel all** (SPEC §8);
 - файлы можно добавлять во время работы;
-- события (`AsyncStream<QueueEvent>`) отдаются в UI, HUD, уведомления и историю.
+- события (`AsyncStream<QueueEvent>`) отдаются в UI, HUD, уведомления и историю. У потока **один** долгоживущий подписчик: `AsyncStream` завершается, когда его итератор уничтожен, поэтому повторный `for await` не работает — раздачу нескольким потребителям делает модель приложения;
+- вызывающий код может сам создать `Job` с ID и записать соответствие до постановки в очередь — так ни одно раннее событие не теряется.
 
 Общие правила вывода (модуль `Output`) применяются одинаково для всех движков:
 1. пишем во временный файл рядом с целью;
@@ -97,7 +98,7 @@ protocol CompressionEngine: Sendable {
 
 | Движок | Чем | Ключевые моменты из SPEC |
 |---|---|---|
-| **Image** | декодирование — ImageIO (JPEG, PNG, HEIC, TIFF, BMP, DNG, WebP, AVIF; SVG — через рендер в `CGImage`); JPEG/TIFF — ImageIO; PNG — `pngquant` (+ без потерь `oxipng`, опционально); WebP — `cwebp`; AVIF — `avifenc` | 5 уровней качества и целевой размер (бинарный поиск по quality, результат JPG, «Couldn't reach target size»); 6 режимов размера, только уменьшение; сохранение DPI для JPEG/PNG; прозрачность при PNG→JPG — подложка, а не чёрный фон (§3) |
+| **Image** ([параметры](QUALITY.md)) | декодирование — ImageIO (JPEG, PNG, HEIC, TIFF, BMP, DNG, WebP, AVIF; SVG — через рендер в `CGImage`); JPEG/TIFF — ImageIO; PNG — `pngquant` (+ без потерь `oxipng`, опционально); WebP — `cwebp`; AVIF — `avifenc` | 5 уровней качества и целевой размер (бинарный поиск по quality, результат JPG, «Couldn't reach target size»); 6 режимов размера, только уменьшение; сохранение DPI для JPEG/PNG; прозрачность при PNG→JPG — подложка, а не чёрный фон (§3) |
 | **Video** | `ffmpeg` / `ffprobe`; кодеры `h264_videotoolbox`/`hevc_videotoolbox` или `libx264`/`libx265`; WebM — `libvpx-vp9`; альфа — VP9 в WebM, ProRes 4444/HEVC с альфой в MOV | прогресс из `-progress pipe:1`; 5 уровней + целевой размер (битрейт = цель/длительность − звук, двухпроходно); разрешения и Max-режимы без увеличения; FPS только вниз; звук копируется без перекодирования, все дорожки; нечётные размеры → чётные (§2) |
 | **Audio (MP3)** | `ffmpeg -c:a libmp3lame -q:a 0` | каналы как в исходнике; ошибка, если звука нет (§7) |
 | **GIF** | кадры из `ffmpeg` → `gifski` | качество → `--quality`, FPS 10–50, размеры 25/50/75%/процент/max width (§4) |

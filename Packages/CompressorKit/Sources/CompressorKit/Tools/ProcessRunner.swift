@@ -111,6 +111,20 @@ private final class RunningProcess: @unchecked Sendable {
             let out = StreamCollector(stdout, group: endOfStreams)
             let err = StreamCollector(stderr, group: endOfStreams)
 
+            // terminationHandler, not waitUntilExit(): waitUntilExit on a background thread can
+            // miss the exit of a process that finishes very quickly and block forever.
+            // Set before run() so no exit can be missed.
+            process.terminationHandler = { process in
+                DispatchQueue.global(qos: .utility).async {
+                    // The pipes normally close when the process exits. A grandchild it spawned may
+                    // still hold them open, so wait for end of stream only briefly.
+                    _ = endOfStreams.wait(timeout: .now() + .seconds(1))
+                    continuation.resume(
+                        returning: ProcessResult(
+                            exitCode: process.terminationStatus, stdout: out.finish(), stderr: err.finish()))
+                }
+            }
+
             let launchError: Error? = lock.withLock {
                 // Stopped before launch: do not start the process at all.
                 switch _stopReason {
@@ -130,20 +144,11 @@ private final class RunningProcess: @unchecked Sendable {
                 }
             }
             if let launchError {
+                // The process never started, so terminationHandler will not run.
+                process.terminationHandler = nil
                 _ = out.finish()
                 _ = err.finish()
                 continuation.resume(throwing: launchError)
-                return
-            }
-
-            DispatchQueue.global(qos: .utility).async { [process] in
-                process.waitUntilExit()
-                // The pipes normally close when the process exits. A grandchild it spawned may
-                // still hold them open, so wait for end of stream only briefly.
-                _ = endOfStreams.wait(timeout: .now() + .seconds(1))
-                continuation.resume(
-                    returning: ProcessResult(
-                        exitCode: process.terminationStatus, stdout: out.finish(), stderr: err.finish()))
             }
         }
     }
