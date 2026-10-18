@@ -254,19 +254,45 @@ struct VideoPipelineTests {
         #expect(abs((try await probe(result.output).fps ?? 0) - 15) < 0.1)
     }
 
-    // MARK: MP3 (SPEC §7)
+    // MARK: Audio from video (SPEC §7 for MP3)
+
+    /// `ffprobe` fields of the output's streams of one type, one line per stream.
+    func streams(_ url: URL, _ type: String, _ entries: String) async throws -> [String] {
+        let result = try await ProcessRunner().run(
+            videoTools.ffprobe!,
+            arguments: [
+                "-v", "error", "-select_streams", type, "-show_entries", entries, "-of", "csv=p=0", url.path,
+            ])
+        return result.stdoutString.split(whereSeparator: \.isNewline).map(String.init)
+    }
 
     @Test func extractsMP3() async throws {
         let input = try await clip("normal.mp4")
         let result = try #require(await run(input, VideoSettings(format: .mp3)).result)
         #expect(result.output.lastPathComponent == "normal_compressed.mp3")
         #expect(result.pixelSize == nil)
-        let probeResult = try await ProcessRunner().run(
+        #expect(try await streams(result.output, "a", "stream=codec_name,channels") == ["mp3,2"])
+        // A frame from the video as square cover art.
+        #expect(
+            try await streams(result.output, "v", "stream=codec_name,width,height:stream_disposition=attached_pic")
+                == ["mjpeg,600,600,1"])
+    }
+
+    @Test func extractsSpeechForMessengers() async throws {
+        let input = try await clip("normal.mp4")
+        let m4a = try #require(await run(input, VideoSettings(format: .m4a, audioProfile: .speech)).result)
+        #expect(m4a.output.lastPathComponent == "normal_compressed.m4a")
+        // ffprobe prints fields in its own order: codec, sample rate, channels.
+        #expect(try await streams(m4a.output, "a", "stream=codec_name,sample_rate,channels") == ["aac,48000,1"])
+        #expect(try await streams(m4a.output, "v", "stream_disposition=attached_pic") == ["1"])
+        let title = try await ProcessRunner().run(
             videoTools.ffprobe!,
-            arguments: [
-                "-v", "error", "-show_entries", "stream=codec_name,channels", "-of", "csv=p=0", result.output.path,
-            ])
-        #expect(probeResult.stdoutString.trimmingCharacters(in: .whitespacesAndNewlines) == "mp3,2")
+            arguments: ["-v", "error", "-show_entries", "format_tags=title", "-of", "csv=p=0", m4a.output.path])
+        #expect(title.stdoutString.trimmingCharacters(in: .whitespacesAndNewlines) == "normal")
+
+        let opus = try #require(await run(input, VideoSettings(format: .opus, audioProfile: .speech)).result)
+        #expect(try await streams(opus.output, "a", "stream=codec_name,channels") == ["opus,1"])
+        #expect(try await streams(opus.output, "v", "stream=codec_name").isEmpty)
     }
 
     @Test func mp3WithoutAudioFails() async throws {

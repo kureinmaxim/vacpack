@@ -24,7 +24,7 @@ enum Brand {
     static let button = LinearGradient(colors: [paper, mustard, ochre], startPoint: .top, endPoint: .bottom)
 
     /// The app icon from the asset catalog; NSApp.applicationIconImage can be a stale cached copy.
-    static var icon: NSImage { NSImage(named: "AppIcon") ?? NSApp.applicationIconImage }
+    @MainActor static var icon: NSImage { NSImage(named: "AppIcon") ?? NSApp.applicationIconImage }
 
     /// Gradient text that stays readable: rust and brown on light backgrounds, mustard on dark ones.
     static func headline(_ scheme: ColorScheme) -> LinearGradient {

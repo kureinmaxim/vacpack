@@ -47,6 +47,9 @@ struct ContentView: View {
             if let format = environment["VACPACK_UITEST_VIDEO_FORMAT"].flatMap(VideoFormatChoice.init) {
                 model.videoSettings.format = format
             }
+            if let profile = environment["VACPACK_UITEST_AUDIO_PROFILE"].flatMap(AudioProfile.init) {
+                model.videoSettings.audioProfile = profile
+            }
             if let paths = environment["VACPACK_UITEST_FILES"] {
                 model.add(paths.split(separator: ":").map { URL(filePath: String($0)) })
             }
@@ -228,17 +231,9 @@ private struct VideoOptionsRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             pickers
-            // Toggles on their own line, so their labels never wrap in a narrow window.
-            HStack(spacing: 18) {
-                Toggle("Remove audio", isOn: $model.videoSettings.removeAudio)
-                    .fixedSize()
-                Toggle("Keep transparency", isOn: $model.videoSettings.preserveTransparency)
-                    .fixedSize()
-                    .help("MOV keeps the alpha channel with HEVC; WebM always keeps it")
-                Toggle("Hardware encoding", isOn: $model.videoEncoding.hardwareAcceleration)
-                    .fixedSize()
-                    .help("VideoToolbox: can be faster on 4K, but visibly lower quality at the same size")
-                Spacer()
+            // The second line on its own, so its labels never wrap in a narrow window.
+            Group {
+                if model.videoSettings.format.isAudio { soundOptions } else { videoToggles }
             }
             .padding(.leading, KindLabel.width + 14)
         }
@@ -248,25 +243,82 @@ private struct VideoOptionsRow: View {
     private var pickers: some View {
         HStack(spacing: 14) {
             KindLabel(kind: .video)
-            Picker("Quality", selection: $model.videoSettings.quality) {
-                ForEach(QualityLevel.allCases, id: \.self) { Text($0.label).tag($0) }
+            // Sound-only output ignores the video quality and resolution.
+            if !model.videoSettings.format.isAudio {
+                Picker("Quality", selection: $model.videoSettings.quality) {
+                    ForEach(QualityLevel.allCases, id: \.self) { Text($0.label).tag($0) }
+                }
+                .fixedSize()
             }
-            .fixedSize()
             Picker("Format", selection: $model.videoSettings.format) {
                 Text("Same as input").tag(VideoFormatChoice.same)
                 Text("MP4").tag(VideoFormatChoice.mp4)
                 Text("WebM").tag(VideoFormatChoice.webm)
                 Text("MOV").tag(VideoFormatChoice.mov)
                 Text("GIF").tag(VideoFormatChoice.gif)
+                Divider()
+                Text("M4A (audio)").tag(VideoFormatChoice.m4a)
                 Text("MP3 (audio)").tag(VideoFormatChoice.mp3)
+                Text("Opus (audio)").tag(VideoFormatChoice.opus)
             }
             .fixedSize()
-            Picker("Resolution", selection: $resolution) {
-                ForEach(Resolution.allCases) { Text($0.rawValue).tag($0) }
+            if !model.videoSettings.format.isAudio {
+                Picker("Resolution", selection: $resolution) {
+                    ForEach(Resolution.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .fixedSize()
             }
-            .fixedSize()
             Spacer()
         }
+    }
+
+    private var videoToggles: some View {
+        HStack(spacing: 18) {
+            Toggle("Remove audio", isOn: $model.videoSettings.removeAudio)
+                .fixedSize()
+            Toggle("Keep transparency", isOn: $model.videoSettings.preserveTransparency)
+                .fixedSize()
+                .help("MOV keeps the alpha channel with HEVC; WebM always keeps it")
+            Toggle("Hardware encoding", isOn: $model.videoEncoding.hardwareAcceleration)
+                .fixedSize()
+                .help("VideoToolbox: can be faster on 4K, but visibly lower quality at the same size")
+            Spacer()
+        }
+    }
+
+    /// Music or speech, with what that means for size and players.
+    private var soundOptions: some View {
+        HStack(spacing: 14) {
+            Picker("Sound", selection: $model.videoSettings.audioProfile) {
+                Text("Music").tag(AudioProfile.music)
+                Text("Speech (podcast)").tag(AudioProfile.speech)
+            }
+            .pickerStyle(.segmented)
+            .fixedSize()
+            Text(soundHint)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+            Spacer()
+        }
+    }
+
+    private var soundHint: String {
+        let speech = model.videoSettings.audioProfile == .speech
+        let size: String
+        let players: String
+        switch model.videoSettings.format {
+        case .opus:
+            size = speech ? "about 14 MB an hour" : "about 58 MB an hour"
+            players = "Telegram, Android and desktops; iPhone apps may not play it"
+        case .mp3:
+            size = speech ? "about 29 MB an hour" : "about 110 MB an hour"
+            players = "plays everywhere"
+        default:
+            size = speech ? "about 29 MB an hour" : "about 86 MB an hour"
+            players = "plays everywhere, iPhone included: Telegram, Delta Chat, podcasts"
+        }
+        return (speech ? "Mono, even loudness · " : "") + "\(size) · \(players)"
     }
 }
 

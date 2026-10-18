@@ -7,7 +7,7 @@ let usage = """
     Commands:
       tools [--json]            Show the external tools the engines use, where they are and their versions
       image <files|folders>...  Compress images (run `image --help` for options)
-      video <files|folders>...  Compress or convert videos, make GIFs, extract MP3 (`video --help`)
+      video <files|folders>...  Compress or convert videos, make GIFs, extract audio (`video --help`)
       gif <files|folders>...    Compress animated GIFs (run `gif --help` for options)
       --version                 Show the version and its release date
       --help                    Show this help

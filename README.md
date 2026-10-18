@@ -2,7 +2,7 @@
 
 Vacpack is a native macOS app and command-line tool that makes images, videos and GIFs smaller, entirely offline. Like vacuum packing: everything the file does not need is pumped out.
 
-**Version:** `0.2.1`, released 18.10.2026 · [changelog](CHANGELOG.md) · [how versions are managed](VERSION_MANAGEMENT.md)
+**Version:** `0.3.0`, released 18.10.2026 · [changelog](CHANGELOG.md) · [how versions are managed](VERSION_MANAGEMENT.md)
 
 <p align="center">
   <picture>
@@ -29,7 +29,7 @@ Vacpack is a native macOS app and command-line tool that makes images, videos an
 ## What works today
 
 - **Images** — JPEG, PNG, WebP, AVIF, HEIC/HEIF, TIFF, BMP and SVG in (DNG is supported but not yet tested); JPEG, PNG, WebP, AVIF or the same format out. Five quality levels, six resize modes (never upscaling), EXIF orientation applied, transparency kept (or flattened to white for JPEG). EXIF/IPTC/XMP, color profile, print resolution, file dates and Finder tags can be kept.
-- **Videos** — MP4, MOV, WebM, MKV and other containers in; MP4, MOV, WebM or the same container out, or MP3 audio. H.264 or HEVC with x264/x265 (VideoToolbox optional on Apple Silicon), VP9 + Opus for WebM, output bitrate capped below the source's so already-compressed videos still shrink, transparency kept in WebM and MOV, every audio track kept, resolution presets and frame-rate caps that only ever go down. Falls back to software encoding when the media engine is busy.
+- **Videos** — MP4, MOV, WebM, MKV and other containers in; MP4, MOV, WebM or the same container out, or just the sound as M4A, MP3 or Opus: a speech profile (mono, even loudness, about 29 MB an hour) makes podcasts and voice files for Telegram, Delta Chat and other messengers, with a frame from the video as cover art; share a finished file from the window. H.264 or HEVC with x264/x265 (VideoToolbox optional on Apple Silicon), VP9 + Opus for WebM, output bitrate capped below the source's so already-compressed videos still shrink, transparency kept in WebM and MOV, every audio track kept, resolution presets and frame-rate caps that only ever go down. Falls back to software encoding when the media engine is busy.
 - **GIFs** — compress animated GIFs or turn videos into GIFs with gifski: quality, size and frame rate (10–50 fps), transparency and frame timing preserved.
 - **Safe by default** — a result that is not smaller never replaces the original, originals go to the Trash only after success, and nothing ever leaves your Mac.
 

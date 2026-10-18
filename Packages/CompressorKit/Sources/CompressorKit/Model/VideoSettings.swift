@@ -1,8 +1,20 @@
 import Foundation
 
-/// Output format choice for videos (SPEC §2). GIF output uses `GIFSettings` (SPEC §4).
+/// Output format choice for videos (SPEC §2). GIF output uses `GIFSettings` (SPEC §4); MP3, M4A and
+/// Opus keep only the sound (SPEC §7 for MP3).
 public enum VideoFormatChoice: String, Codable, Sendable, CaseIterable {
-    case same, mp4, webm, mov, gif, mp3
+    case same, mp4, webm, mov, gif, mp3, m4a, opus
+
+    /// Formats that keep only the sound.
+    public var isAudio: Bool { self == .mp3 || self == .m4a || self == .opus }
+}
+
+/// How the sound is encoded when a video becomes an audio file.
+public enum AudioProfile: String, Codable, Sendable, CaseIterable {
+    /// The source's channels at high quality (for MP3: VBR V0, SPEC §7).
+    case music
+    /// Podcasts and messengers: mono, loudness evened out to −16 LUFS, a low bitrate.
+    case speech
 }
 
 /// Resolution choices from SPEC §2. Videos are only ever scaled down; aspect ratio is kept.
@@ -38,16 +50,19 @@ public struct VideoSettings: Codable, Hashable, Sendable {
     public var removeAudio: Bool
     /// Keep the alpha channel in MOV output. WebM output always keeps it (SPEC §2).
     public var preserveTransparency: Bool
+    /// Sound encoding for MP3, M4A and Opus output.
+    public var audioProfile: AudioProfile
 
     public init(
         quality: QualityLevel = .high, format: VideoFormatChoice = .same, resolution: VideoResolution = .same,
-        removeAudio: Bool = false, preserveTransparency: Bool = false
+        removeAudio: Bool = false, preserveTransparency: Bool = false, audioProfile: AudioProfile = .music
     ) {
         self.quality = quality
         self.format = format
         self.resolution = resolution
         self.removeAudio = removeAudio
         self.preserveTransparency = preserveTransparency
+        self.audioProfile = audioProfile
     }
 }
 

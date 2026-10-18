@@ -23,16 +23,25 @@ enum VideoContainer: String, Sendable, CaseIterable {
     func canCopyAudio(_ codec: String) -> Bool { self == .mkv || copyableAudioCodecs.contains(codec) }
 }
 
+/// Audio-only files made from a video's sound.
+enum AudioFormat: String, Sendable, CaseIterable {
+    case mp3, m4a, opus
+
+    var fileExtension: String { rawValue }
+    /// Formats whose container holds cover art.
+    var holdsCover: Bool { self != .opus }
+}
+
 enum VideoOutput: Equatable, Sendable {
     case video(VideoContainer)
-    case mp3
+    case audio(AudioFormat)
     /// Produced by `GIFEngine`, never by `VideoCommand`.
     case gif
 
     var fileExtension: String {
         switch self {
         case .video(let container): container.fileExtension
-        case .mp3: "mp3"
+        case .audio(let format): format.fileExtension
         case .gif: "gif"
         }
     }
@@ -46,7 +55,9 @@ enum VideoOutput: Equatable, Sendable {
         case .mp4: return .video(.mp4)
         case .mov: return .video(.mov)
         case .webm: return .video(.webm)
-        case .mp3: return .mp3
+        case .mp3: return .audio(.mp3)
+        case .m4a: return .audio(.m4a)
+        case .opus: return .audio(.opus)
         case .gif: return .gif
         case .same:
             switch inputExtension.lowercased() {
@@ -106,6 +117,43 @@ struct VideoCommand: Equatable {
         var videoToolboxQuality: Bool
     }
 
+    /// The first audio track as an audio file (after the main `-i`). MP3 and M4A get a frame from
+    /// 10% into the video as square cover art, and the file name as the title when the video has none,
+    /// so players and messengers show a proper track. Rate control is in QUALITY.md, "Звук из видео".
+    static func audioArguments(_ format: AudioFormat, profile: AudioProfile, input: URL, info: VideoInfo) -> [String] {
+        var args: [String] = []
+        if format.holdsCover {
+            let time = String(format: "%.2f", max(0, info.duration * 0.1))
+            args += [
+                "-ss", time, "-i", input.path, "-map", "1:V:0", "-frames:v", "1", "-c:v", "mjpeg", "-vf",
+                "crop='min(iw,ih)':'min(iw,ih)',scale=600:600:flags=lanczos", "-disposition:v:0", "attached_pic",
+            ]
+        }
+        args += ["-map", "0:a:0"]
+        if !format.holdsCover { args.append("-vn") }
+        if profile == .speech {
+            // Mono and even loudness (the podcast target, −16 LUFS); loudnorm works at a high
+            // internal rate, so the output rate is set back explicitly.
+            args += ["-ac", "1", "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "48000"]
+        }
+        switch (format, profile) {
+        case (.mp3, .music): args += ["-c:a", "libmp3lame", "-q:a", "0"]  // SPEC §7: V0, source channels.
+        case (.mp3, .speech): args += ["-c:a", "libmp3lame", "-b:a", "64k"]
+        case (.m4a, .music): args += ["-c:a", "aac", "-b:a", "192k"]
+        case (.m4a, .speech): args += ["-c:a", "aac", "-b:a", "64k"]
+        case (.opus, .music): args += ["-c:a", "libopus", "-b:a", "128k"]
+        case (.opus, .speech): args += ["-c:a", "libopus", "-b:a", "32k", "-application", "voip"]
+        }
+        args += ["-map_metadata", "0"]
+        if info.title == nil { args += ["-metadata", "title=\(input.deletingPathExtension().lastPathComponent)"] }
+        switch format {
+        case .mp3: args += ["-id3v2_version", "3"]
+        case .m4a: args += ["-movflags", "+faststart"]
+        case .opus: break
+        }
+        return args
+    }
+
     static func build(
         input: URL, output outputURL: URL, info: VideoInfo, settings: VideoSettings,
         options: VideoEncodingOptions, environment: Environment
@@ -118,9 +166,9 @@ struct VideoCommand: Equatable {
 
         if output == .gif { preconditionFailure("video → GIF is handled by GIFEngine") }
         guard case .video(let container) = output else {
+            guard case .audio(let format) = output else { preconditionFailure("unreachable: GIF is handled above") }
             guard !info.audioCodecs.isEmpty else { throw VideoError.noAudioTrack }
-            // SPEC §7: best VBR (V0), channels as in the source.
-            args += ["-map", "0:a:0", "-vn", "-c:a", "libmp3lame", "-q:a", "0"]
+            args += audioArguments(format, profile: settings.audioProfile, input: input, info: info)
             if let threads = options.threads { args += ["-threads", String(threads)] }
             args.append(outputURL.path)
             return VideoCommand(arguments: args, output: output, size: nil)

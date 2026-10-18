@@ -4,8 +4,12 @@ Notable changes to Vacpack. The format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-18
+
 ### Added
 
+- Sound from video as M4A, MP3 or Opus. A Speech (podcast) profile makes it mono with even loudness (−16 LUFS) at a low bitrate — about 29 MB an hour in M4A or MP3, 14 MB in Opus — for listening as a podcast or sending through Telegram, Delta Chat and other messengers. M4A and MP3 get a frame from the video as cover art and the file name as the title. CLI: `--format m4a|mp3|opus --audio music|speech`.
+- A Share button on finished files (Telegram, Messages, Mail, AirDrop and other share extensions); apps without one, such as Delta Chat, take the file dragged from the window.
 - README screenshots of the window, light and dark, from `scripts/snapshot.sh --readme`; `scripts/make-demo.sh` generates the photos, video and GIF in them.
 
 ## [0.2.1] - 2026-10-18

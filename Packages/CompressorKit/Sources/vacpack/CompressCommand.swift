@@ -31,7 +31,9 @@ let videoUsage = """
     Usage: vacpack video <files|folders>... [options]
 
     Options:
-      --format <f>            same | mp4 | webm | mov | gif | mp3           (default: same)
+      --format <f>            same | mp4 | webm | mov | gif | m4a | mp3 | opus   (default: same)
+      --audio <a>             music | speech: speech is mono, even loudness, ~29 MB an hour in
+                              M4A or MP3 (~14 MB in Opus), for podcasts and messengers (default: music)
       --resolution <r>        same | 4k | 1080p | 720p                      (default: same)
       --max-width <px>        Also: --max-height, --max-long-edge, --max-short-edge
       --codec <c>             h264 | hevc                                   (default: h264)
@@ -155,6 +157,7 @@ struct CompressOptions {
             case "--no-hw" where isVideo: encoding.hardwareAcceleration = false
             case "--threads" where isVideo: encoding.threads = try number(argument)
             case "--remove-audio" where isVideo: video.removeAudio = true
+            case "--audio" where isVideo: video.audioProfile = try choice(argument, AudioProfile.self)
             case "--keep-transparency" where isVideo: video.preserveTransparency = true
             case "--gif-fps" where isVideo:
                 let fps = try number(argument)

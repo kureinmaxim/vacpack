@@ -108,6 +108,11 @@ private struct FileRow: View {
         case .done(.compressed(let result)):
             HStack(spacing: 10) {
                 SavingsBadge(fraction: result.savedFraction)
+                // Telegram, Messages, Mail, AirDrop… For apps without a share extension (Delta Chat),
+                // drag the row into their window instead.
+                ShareLink(item: result.output) { Image(systemName: "square.and.arrow.up") }
+                    .buttonStyle(.borderless)
+                    .help("Share")
                 Button {
                     NSWorkspace.shared.activateFileViewerSelecting([result.output])
                 } label: {
@@ -125,6 +130,7 @@ private struct FileRow: View {
 
     @ViewBuilder private var menu: some View {
         if let resultURL {
+            ShareLink("Share Result…", item: resultURL)
             Button("Show Result in Finder") { NSWorkspace.shared.activateFileViewerSelecting([resultURL]) }
             Button("Open Result") { NSWorkspace.shared.open(resultURL) }
             Divider()

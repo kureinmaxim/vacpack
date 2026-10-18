@@ -18,6 +18,8 @@ struct VideoInfo: Sendable, Equatable {
     var audioCodecs: [String]
     /// Bits per second of the video stream, if known (used to cap the output bitrate).
     var videoBitrate: Int? = nil
+    /// The container's title tag, if any (audio output names the track after the file otherwise).
+    var title: String? = nil
 
     /// Size as shown to the viewer, with rotation applied.
     var displaySize: PixelSize {
@@ -105,7 +107,9 @@ enum VideoProbe {
             hasAlpha: alphaMode || alphaFormats.contains { pixelFormat?.hasPrefix($0) ?? false },
             alphaDecoder: alphaMode ? ["vp9": "libvpx-vp9", "vp8": "libvpx"][video.codec_name ?? ""] : nil,
             audioCodecs: audio.map { $0.codec_name ?? "unknown" },
-            videoBitrate: videoBitrate)
+            videoBitrate: videoBitrate,
+            title: output.format.tags?.first { $0.key.lowercased() == "title" }?.value
+                .trimmingCharacters(in: .whitespaces).nilIfEmpty)
     }
 
     /// "30000/1001" → 29.97; "0/0" → nil.
@@ -158,8 +162,13 @@ private struct FFProbeOutput: Decodable {
     struct Format: Decodable {
         let duration: String?
         let bit_rate: String?
+        let tags: [String: String]?
     }
 
     let streams: [Stream]
     let format: Format
+}
+
+private extension String {
+    var nilIfEmpty: String? { isEmpty ? nil : self }
 }

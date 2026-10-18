@@ -38,6 +38,11 @@ struct VideoCommandTests {
         args.firstIndex(of: flag).flatMap { $0 + 1 < args.count ? args[$0 + 1] : nil }
     }
 
+    /// Every value after `flag`, in order.
+    func values(_ args: [String], _ flag: String) -> [String] {
+        args.indices.filter { args[$0] == flag && $0 + 1 < args.count }.map { args[$0 + 1] }
+    }
+
     // MARK: Output and size
 
     @Test(arguments: [
@@ -242,17 +247,78 @@ struct VideoCommandTests {
         #expect(!args.contains("-c:a:0"))
     }
 
-    @Test func mp3ExtractsFirstAudioTrack() throws {
-        let command = try build(info(audio: ["aac", "ac3"]), VideoSettings(format: .mp3))
-        #expect(command.output == .mp3)
-        #expect(command.size == nil)
-        #expect(value(command.arguments, "-c:a") == "libmp3lame")
-        #expect(value(command.arguments, "-q:a") == "0")
-        #expect(value(command.arguments, "-map") == "0:a:0")
+    // MARK: Audio from video
+
+    @Test(arguments: [
+        (VideoFormatChoice.mp3, VideoOutput.audio(.mp3), "mp3"), (.m4a, .audio(.m4a), "m4a"),
+        (.opus, .audio(.opus), "opus"),
+    ])
+    func audioFormatsResolve(choice: VideoFormatChoice, expected: VideoOutput, fileExtension: String) {
+        #expect(choice.isAudio)
+        #expect(VideoOutput.resolve(choice, inputExtension: "mov") == expected)
+        #expect(expected.fileExtension == fileExtension)
     }
 
-    @Test func mp3WithoutAudioFails() {
-        #expect(throws: VideoError.noAudioTrack) { try build(info(audio: []), VideoSettings(format: .mp3)) }
+    @Test func mp3ExtractsFirstAudioTrack() throws {
+        let command = try build(info(audio: ["aac", "ac3"]), VideoSettings(format: .mp3))
+        #expect(command.output == .audio(.mp3))
+        #expect(command.size == nil)
+        #expect(value(command.arguments, "-c:a") == "libmp3lame")
+        #expect(value(command.arguments, "-q:a") == "0")  // SPEC §7: V0, the source's channels.
+        #expect(!command.arguments.contains("-ac"))
+        #expect(values(command.arguments, "-map") == ["1:V:0", "0:a:0"])
+    }
+
+    @Test(arguments: [(VideoFormatChoice.mp3, "libmp3lame", "64k"), (.m4a, "aac", "64k"), (.opus, "libopus", "32k")])
+    func speechIsMonoEvenAndSmall(format: VideoFormatChoice, encoder: String, bitrate: String) throws {
+        let args = try build(info(), VideoSettings(format: format, audioProfile: .speech)).arguments
+        #expect(value(args, "-ac") == "1")
+        #expect(value(args, "-af") == "loudnorm=I=-16:TP=-1.5:LRA=11")
+        #expect(value(args, "-ar") == "48000")
+        #expect(value(args, "-c:a") == encoder)
+        #expect(value(args, "-b:a") == bitrate)
+        #expect(args.contains("-application") == (format == .opus))
+    }
+
+    @Test func musicKeepsHighQuality() throws {
+        let m4a = try build(info(), VideoSettings(format: .m4a)).arguments
+        #expect(value(m4a, "-c:a") == "aac")
+        #expect(value(m4a, "-b:a") == "192k")
+        #expect(value(m4a, "-movflags") == "+faststart")
+        #expect(!m4a.contains("-af"))
+        let opus = try build(info(), VideoSettings(format: .opus)).arguments
+        #expect(value(opus, "-b:a") == "128k")
+    }
+
+    @Test func coverArtFromAFrameForMP3AndM4A() throws {
+        for format in [VideoFormatChoice.mp3, .m4a] {
+            let args = try build(info(), VideoSettings(format: format)).arguments
+            #expect(values(args, "-i") == [input.path, input.path])
+            #expect(value(args, "-ss") == "1.00")  // 10% into a 10 s video.
+            #expect(value(args, "-disposition:v:0") == "attached_pic")
+            #expect(value(args, "-c:v") == "mjpeg")
+        }
+        // Ogg Opus has no simple way to hold a picture: sound only.
+        let opus = try build(info(), VideoSettings(format: .opus)).arguments
+        #expect(values(opus, "-i") == [input.path])
+        #expect(opus.contains("-vn"))
+        #expect(values(opus, "-map") == ["0:a:0"])
+    }
+
+    @Test func titleFromTheFileNameWhenTheVideoHasNone() throws {
+        let untitled = try build(info(), VideoSettings(format: .m4a)).arguments
+        #expect(value(untitled, "-metadata") == "title=clip")
+        var titled = info()
+        titled.title = "Weekly talk"
+        let kept = try build(titled, VideoSettings(format: .m4a)).arguments
+        #expect(!kept.contains("-metadata"))
+        #expect(value(kept, "-map_metadata") == "0")
+    }
+
+    @Test func audioWithoutAnAudioTrackFails() {
+        for format in [VideoFormatChoice.mp3, .m4a, .opus] {
+            #expect(throws: VideoError.noAudioTrack) { try build(info(audio: []), VideoSettings(format: format)) }
+        }
     }
 
     @Test func threadsLimitIsPassed() throws {
@@ -298,6 +364,16 @@ struct VideoProbeParsingTests {
         #expect(try VideoProbe.parse(Data(mkv.utf8)).videoBitrate == 1_000_000)
         let unknown = #"{"streams":[{"codec_type":"video","codec_name":"h264","width":2,"height":2}],"format":{}}"#
         #expect(try VideoProbe.parse(Data(unknown.utf8)).videoBitrate == nil)
+    }
+
+    @Test func readsTitle() throws {
+        let titled = """
+            {"streams":[{"codec_type":"video","codec_name":"h264","width":2,"height":2}],
+             "format":{"duration":"1","tags":{"TITLE":" Weekly talk "}}}
+            """
+        #expect(try VideoProbe.parse(Data(titled.utf8)).title == "Weekly talk")
+        let untitled = #"{"streams":[{"codec_type":"video","codec_name":"h264","width":2,"height":2}],"format":{}}"#
+        #expect(try VideoProbe.parse(Data(untitled.utf8)).title == nil)
     }
 
     @Test func alphaFromPixelFormatAndBitDepth() throws {
