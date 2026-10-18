@@ -2,6 +2,29 @@ import Foundation
 
 /// Encoder parameters per video quality level. Version 0; see docs/QUALITY.md.
 enum VideoQualityTable {
+    /// Share of the source's video bitrate the output may use at most. Without it, quality-based
+    /// encoding of an already-compressed video (a 1.5 Mbit/s 1080p download) came out larger.
+    static func sourceShare(_ q: QualityLevel) -> Double {
+        switch q {
+        case .highest: 0.90
+        case .high: 0.75
+        case .good: 0.60
+        case .medium: 0.45
+        case .acceptable: 0.32
+        }
+    }
+
+    /// VideoToolbox average bitrate ceiling in bits per pixel per frame for H.264 (HEVC uses 65%).
+    static func videoToolboxBitsPerPixel(_ q: QualityLevel) -> Double {
+        switch q {
+        case .highest: 0.14
+        case .high: 0.10
+        case .good: 0.075
+        case .medium: 0.055
+        case .acceptable: 0.04
+        }
+    }
+
     /// VideoToolbox constant quality (`-q:v`, 1–100, Apple Silicon only) for H.264.
     static func videoToolboxH264(_ q: QualityLevel) -> Int {
         switch q {

@@ -147,9 +147,10 @@ struct VideoCommand: Equatable {
         }
         if !filters.isEmpty { args += ["-vf", filters.joined(separator: ",")] }
 
+        let outputFPS = min(info.fps ?? 30, Double(options.maxFPS ?? Int.max))
         args += videoCodecArguments(
             container: container, keepAlpha: keepAlpha, info: info, settings: settings, options: options,
-            environment: environment)
+            environment: environment, size: size, fps: outputFPS)
 
         if !settings.removeAudio {
             for (index, codec) in info.audioCodecs.enumerated() {
@@ -168,15 +169,21 @@ struct VideoCommand: Equatable {
         return VideoCommand(arguments: args, output: output, size: size)
     }
 
+    /// Rate control (docs/QUALITY.md, "Rate control"): a quality target as before, but never more
+    /// than a share of the source's own video bitrate, so already-compressed videos still shrink.
     private static func videoCodecArguments(
         container: VideoContainer, keepAlpha: Bool, info: VideoInfo, settings: VideoSettings,
-        options: VideoEncodingOptions, environment: Environment
+        options: VideoEncodingOptions, environment: Environment, size: PixelSize, fps: Double
     ) -> [String] {
         let q = settings.quality
+        // Bits per second the output may use at most; nil when the source bitrate is unknown.
+        let cap = info.videoBitrate.map { Int(Double($0) * VideoQualityTable.sourceShare(q)) }
+        func kbps(_ bits: Int) -> String { "\(max(1, bits / 1000))k" }
         if container == .webm {
+            // Constrained quality: CRF with -b:v as the ceiling; -b:v 0 is pure constant quality.
             var args = [
-                "-c:v", "libvpx-vp9", "-crf", String(VideoQualityTable.vp9(q)), "-b:v", "0", "-row-mt", "1",
-                "-deadline", "good", "-cpu-used", "4",
+                "-c:v", "libvpx-vp9", "-crf", String(VideoQualityTable.vp9(q)), "-b:v", cap.map(kbps) ?? "0",
+                "-row-mt", "1", "-deadline", "good", "-cpu-used", "4",
             ]
             args += keepAlpha ? ["-pix_fmt", "yuva420p", "-auto-alt-ref", "0"] : ["-pix_fmt", "yuv420p"]
             return args
@@ -191,19 +198,33 @@ struct VideoCommand: Equatable {
 
         let tenBit = info.bitDepth > 8
         let hardware = options.hardwareAcceleration && environment.videoToolboxQuality
+        // VideoToolbox overshoots in quality mode and undershoots under -maxrate, so with a known
+        // source bitrate it gets an average bitrate: the cap, or less for its resolution and rate.
+        func videoToolboxRate(_ fallbackQuality: Int, efficiency: Double) -> [String] {
+            guard let cap else { return ["-q:v", String(fallbackQuality)] }
+            let pixelsPerSecond = Double(size.width * size.height) * fps
+            let ceiling = Int(pixelsPerSecond * VideoQualityTable.videoToolboxBitsPerPixel(q) * efficiency)
+            return ["-b:v", kbps(min(cap, ceiling))]
+        }
+        // x264/x265 keep their CRF and treat the cap as a VBV limit. The buffer equals the cap: a
+        // larger one let a 2 s clip burst past the source's size through the initial buffer.
+        let softwareCap = cap.map { ["-maxrate", kbps($0), "-bufsize", kbps($0)] } ?? []
         var args: [String]
         switch (options.codec, hardware) {
         case (.h264, true):
-            args = ["-c:v", "h264_videotoolbox", "-q:v", String(VideoQualityTable.videoToolboxH264(q))]
+            args =
+                ["-c:v", "h264_videotoolbox"] + videoToolboxRate(VideoQualityTable.videoToolboxH264(q), efficiency: 1)
             args += ["-pix_fmt", "yuv420p"]
         case (.h264, false):
-            args = ["-c:v", "libx264", "-crf", String(VideoQualityTable.x264(q)), "-preset", "medium"]
+            args = ["-c:v", "libx264", "-crf", String(VideoQualityTable.x264(q)), "-preset", "medium"] + softwareCap
             args += ["-pix_fmt", "yuv420p"]
         case (.hevc, true):
-            args = ["-c:v", "hevc_videotoolbox", "-q:v", String(VideoQualityTable.videoToolboxHEVC(q))]
+            args =
+                ["-c:v", "hevc_videotoolbox"]
+                + videoToolboxRate(VideoQualityTable.videoToolboxHEVC(q), efficiency: 0.65)
             args += ["-pix_fmt", tenBit ? "p010le" : "yuv420p"]
         case (.hevc, false):
-            args = ["-c:v", "libx265", "-crf", String(VideoQualityTable.x265(q)), "-preset", "medium"]
+            args = ["-c:v", "libx265", "-crf", String(VideoQualityTable.x265(q)), "-preset", "medium"] + softwareCap
             args += ["-x265-params", "log-level=error", "-pix_fmt", tenBit ? "yuv420p10le" : "yuv420p"]
         }
         // Apple players want the hvc1 tag for HEVC in MP4/MOV.

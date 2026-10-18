@@ -281,10 +281,15 @@ struct VideoPipelineTests {
 
     // MARK: Rules, progress, cancellation
 
-    @Test func keepsOriginalWhenNotSmaller() async throws {
-        let input = try await clip("tiny.mp4")
-        #expect(await run(input, VideoSettings(quality: .highest)) == .keptOriginal(input: input, copiedTo: nil))
-        #expect(dir.contents() == ["tiny.mp4"])
+    /// Regression: an already-compressed video (low bitrate for its size) must still shrink at the
+    /// default and lower levels, not come out larger and be kept (a 1.5 Mbit/s 1080p download did at
+    /// High). Highest may keep a clip this short: the VBV buffer alone adds about a second of bitrate.
+    @Test(arguments: [QualityLevel.high, .good])
+    func alreadyCompressedVideoStillShrinks(quality: QualityLevel) async throws {
+        let input = try await clip("tiny.mp4")  // x264 CRF 45
+        let outcome = await run(input, VideoSettings(quality: quality))
+        let result = try #require(outcome.result, "\(quality): \(outcome)")
+        #expect(result.outputBytes < result.inputBytes)
     }
 
     @Test func progressRisesToOne() async throws {

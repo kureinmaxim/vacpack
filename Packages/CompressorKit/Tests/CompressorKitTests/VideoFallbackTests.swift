@@ -52,7 +52,8 @@ struct VideoFallbackTests {
         let work = dir.file("work")
         try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
         return try await engine.encode(
-            input, settings: settings, options: VideoEncodingOptions(), workDirectory: work, progress: { _ in })
+            input, settings: settings, options: VideoEncodingOptions(hardwareAcceleration: true), workDirectory: work,
+            progress: { _ in })
     }
 
     @Test func busyVideoToolboxFallsBackToSoftware() async throws {

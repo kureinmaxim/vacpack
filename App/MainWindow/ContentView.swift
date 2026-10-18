@@ -129,7 +129,7 @@ private struct FileRow: View {
                 text += "  ·  \(result.output.pathExtension.uppercased())"
             }
             return text
-        case .done(.keptOriginal): return "\(input)  ·  already optimized, original kept"
+        case .done(.keptOriginal): return "\(input)  ·  would not get smaller — original kept, no new file"
         case .done(.unsupported): return "Not supported yet"
         case .done(.failed(_, let message)): return message
         case .done(.cancelled): return "\(input)  ·  cancelled"
@@ -283,6 +283,26 @@ private struct VideoOptionsRow: View {
     @State private var resolution = Resolution.same
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            pickers
+            // Toggles on their own line, so their labels never wrap in a narrow window.
+            HStack(spacing: 18) {
+                Toggle("Remove audio", isOn: $model.videoSettings.removeAudio)
+                    .fixedSize()
+                Toggle("Keep transparency", isOn: $model.videoSettings.preserveTransparency)
+                    .fixedSize()
+                    .help("MOV keeps the alpha channel with HEVC; WebM always keeps it")
+                Toggle("Hardware encoding", isOn: $model.videoEncoding.hardwareAcceleration)
+                    .fixedSize()
+                    .help("VideoToolbox: can be faster on 4K, but visibly lower quality at the same size")
+                Spacer()
+            }
+            .padding(.leading, 94)
+        }
+        .onChange(of: resolution) { model.videoSettings.resolution = resolution.value }
+    }
+
+    private var pickers: some View {
         HStack(spacing: 14) {
             Label("Videos", systemImage: "film").labelStyle(.titleAndIcon).frame(width: 80, alignment: .leading)
             Picker("Quality", selection: $model.videoSettings.quality) {
@@ -302,12 +322,8 @@ private struct VideoOptionsRow: View {
                 ForEach(Resolution.allCases) { Text($0.rawValue).tag($0) }
             }
             .fixedSize()
-            Toggle("Remove audio", isOn: $model.videoSettings.removeAudio)
-            Toggle("Keep transparency", isOn: $model.videoSettings.preserveTransparency)
-                .help("MOV keeps the alpha channel with HEVC; WebM always keeps it")
             Spacer()
         }
-        .onChange(of: resolution) { model.videoSettings.resolution = resolution.value }
     }
 }
 

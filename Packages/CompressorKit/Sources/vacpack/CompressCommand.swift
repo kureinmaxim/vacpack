@@ -36,7 +36,7 @@ let videoUsage = """
       --max-width <px>        Also: --max-height, --max-long-edge, --max-short-edge
       --codec <c>             h264 | hevc                                   (default: h264)
       --fps <n>               Lower the frame rate to n (never raises it)
-      --no-hw                 Software encoders instead of VideoToolbox
+      --hw                    VideoToolbox instead of x264/x265 (faster on 4K, lower quality)
       --threads <n>           CPU threads for software encoders
       --remove-audio          Drop all audio tracks
       --keep-transparency     Keep the alpha channel in MOV output (WebM always keeps it)
@@ -150,6 +150,8 @@ struct CompressOptions {
                 }
             case "--codec" where isVideo: encoding.codec = try choice(argument, VideoCodec.self)
             case "--fps" where isVideo: encoding.maxFPS = try number(argument)
+            case "--hw" where isVideo: encoding.hardwareAcceleration = true
+            // Software is the default now; kept so older scripts keep working.
             case "--no-hw" where isVideo: encoding.hardwareAcceleration = false
             case "--threads" where isVideo: encoding.threads = try number(argument)
             case "--remove-audio" where isVideo: video.removeAudio = true

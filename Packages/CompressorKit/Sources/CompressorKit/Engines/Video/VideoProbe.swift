@@ -16,6 +16,8 @@ struct VideoInfo: Sendable, Equatable {
     var alphaDecoder: String?
     /// Codec of each audio stream, in stream order.
     var audioCodecs: [String]
+    /// Bits per second of the video stream, if known (used to cap the output bitrate).
+    var videoBitrate: Int? = nil
 
     /// Size as shown to the viewer, with rotation applied.
     var displaySize: PixelSize {
@@ -84,6 +86,14 @@ enum VideoProbe {
         let pixelFormat = video.pix_fmt
         let alphaFormats = ["yuva", "rgba", "bgra", "argb", "abgr", "gbrap", "ya8", "ya16"]
         let duration = Double(output.format.duration ?? "") ?? Double(video.duration ?? "") ?? 0
+        let audio = output.streams.filter { $0.codec_type == "audio" }
+        // MP4/MOV report the stream's rate; Matroska and WebM often only the whole file's, so the
+        // audio is subtracted (128 kbit/s assumed per track without its own rate).
+        var videoBitrate = Int(video.bit_rate ?? "")
+        if videoBitrate == nil, let total = Int(output.format.bit_rate ?? "") {
+            let audioBits = audio.reduce(0) { $0 + (Int($1.bit_rate ?? "") ?? 128_000) }
+            videoBitrate = total > audioBits ? total - audioBits : nil
+        }
 
         return VideoInfo(
             duration: duration,
@@ -94,7 +104,8 @@ enum VideoProbe {
             videoCodec: video.codec_name ?? "unknown",
             hasAlpha: alphaMode || alphaFormats.contains { pixelFormat?.hasPrefix($0) ?? false },
             alphaDecoder: alphaMode ? ["vp9": "libvpx-vp9", "vp8": "libvpx"][video.codec_name ?? ""] : nil,
-            audioCodecs: output.streams.filter { $0.codec_type == "audio" }.map { $0.codec_name ?? "unknown" })
+            audioCodecs: audio.map { $0.codec_name ?? "unknown" },
+            videoBitrate: videoBitrate)
     }
 
     /// "30000/1001" → 29.97; "0/0" → nil.
@@ -138,6 +149,7 @@ private struct FFProbeOutput: Decodable {
         let avg_frame_rate: String?
         let r_frame_rate: String?
         let duration: String?
+        let bit_rate: String?
         let tags: [String: String]?
         let side_data_list: [SideData]?
         let disposition: [String: Int]?
@@ -145,6 +157,7 @@ private struct FFProbeOutput: Decodable {
 
     struct Format: Decodable {
         let duration: String?
+        let bit_rate: String?
     }
 
     let streams: [Stream]

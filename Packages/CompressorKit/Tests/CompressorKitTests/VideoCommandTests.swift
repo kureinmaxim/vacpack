@@ -14,12 +14,14 @@ struct VideoCommandTests {
     func info(
         size: PixelSize = PixelSize(width: 1920, height: 1080), rotation: Int = 0, fps: Double? = 30,
         pixelFormat: String = "yuv420p", codec: String = "h264", alpha: Bool = false, alphaDecoder: String? = nil,
-        audio: [String] = ["aac"]
+        audio: [String] = ["aac"], bitrate: Int? = nil
     ) -> VideoInfo {
         VideoInfo(
             duration: 10, codedSize: size, rotation: rotation, fps: fps, pixelFormat: pixelFormat, videoCodec: codec,
-            hasAlpha: alpha, alphaDecoder: alphaDecoder, audioCodecs: audio)
+            hasAlpha: alpha, alphaDecoder: alphaDecoder, audioCodecs: audio, videoBitrate: bitrate)
     }
+
+    let hardware = VideoEncodingOptions(hardwareAcceleration: true)
 
     func build(
         _ info: VideoInfo, _ settings: VideoSettings = VideoSettings(),
@@ -96,23 +98,25 @@ struct VideoCommandTests {
 
     // MARK: Encoders
 
-    @Test func hardwareH264OnAppleSilicon() throws {
-        let args = try build(info()).arguments
+    @Test func hardwareH264OnAppleSiliconWhenAsked() throws {
+        let args = try build(info(), options: hardware).arguments
         #expect(value(args, "-c:v") == "h264_videotoolbox")
         #expect(value(args, "-q:v") == "58")
         #expect(value(args, "-pix_fmt") == "yuv420p")
     }
 
-    @Test func softwareWhenAskedOrOnIntel() throws {
-        let off = try build(info(), options: VideoEncodingOptions(hardwareAcceleration: false)).arguments
-        #expect(value(off, "-c:v") == "libx264")
-        #expect(value(off, "-crf") == "21")
-        let intel = try build(info(), environment: intel).arguments
+    @Test func softwareByDefaultAndOnIntel() throws {
+        let byDefault = try build(info()).arguments
+        #expect(value(byDefault, "-c:v") == "libx264")
+        #expect(value(byDefault, "-crf") == "21")
+        let intel = try build(info(), options: hardware, environment: intel).arguments
         #expect(value(intel, "-c:v") == "libx264")
     }
 
     @Test func hevcGetsAppleTagAndKeepsTenBit() throws {
-        let args = try build(info(pixelFormat: "yuv420p10le"), options: VideoEncodingOptions(codec: .hevc)).arguments
+        let args = try build(
+            info(pixelFormat: "yuv420p10le"), options: VideoEncodingOptions(codec: .hevc, hardwareAcceleration: true)
+        ).arguments
         #expect(value(args, "-c:v") == "hevc_videotoolbox")
         #expect(value(args, "-tag:v") == "hvc1")
         #expect(value(args, "-pix_fmt") == "p010le")
@@ -132,10 +136,61 @@ struct VideoCommandTests {
     }
 
     @Test func qualityLevelsMapToEncoderValues() throws {
-        let values = try QualityLevel.allCases.map {
-            Int(value(try build(info(), VideoSettings(quality: $0)).arguments, "-q:v")!)!
+        let crf = try QualityLevel.allCases.map {
+            Int(value(try build(info(), VideoSettings(quality: $0)).arguments, "-crf")!)!
         }
-        #expect(values == values.sorted(by: >), "higher quality, higher VideoToolbox value")
+        #expect(crf == crf.sorted(), "lower quality, higher CRF")
+        let videoToolbox = try QualityLevel.allCases.map {
+            Int(value(try build(info(), VideoSettings(quality: $0), options: hardware).arguments, "-q:v")!)!
+        }
+        #expect(videoToolbox == videoToolbox.sorted(by: >), "higher quality, higher VideoToolbox value")
+    }
+
+    // MARK: Rate cap from the source bitrate
+
+    @Test func softwareEncodersAreCappedBelowTheSource() throws {
+        // A 1.55 Mbit/s 1080p download at High may use at most 75% of it.
+        let args = try build(info(bitrate: 1_550_000)).arguments
+        #expect(value(args, "-crf") == "21")
+        #expect(value(args, "-maxrate") == "1162k")
+        #expect(value(args, "-bufsize") == "1162k")
+        let hevc = try build(info(bitrate: 1_550_000), options: VideoEncodingOptions(codec: .hevc)).arguments
+        #expect(value(hevc, "-maxrate") == "1162k")
+    }
+
+    @Test func capShrinksWithQuality() throws {
+        let caps = try QualityLevel.allCases.map {
+            Int(
+                value(try build(info(bitrate: 10_000_000), VideoSettings(quality: $0)).arguments, "-maxrate")!
+                    .dropLast())!
+        }
+        #expect(caps == [9000, 7500, 6000, 4500, 3200])
+    }
+
+    @Test func noCapWithoutAKnownBitrate() throws {
+        #expect(try !build(info()).arguments.contains("-maxrate"))
+        #expect(try value(build(info(), options: hardware).arguments, "-q:v") == "58")
+    }
+
+    @Test func videoToolboxGetsAnAverageBitrate() throws {
+        // Low-bitrate source: the cap wins.
+        let low = try build(info(bitrate: 1_550_000), options: hardware).arguments
+        #expect(value(low, "-b:v") == "1162k")
+        #expect(!low.contains("-q:v"))
+        // 50 Mbit/s camera footage: the resolution ceiling wins (1920×1080×30×0.10).
+        let camera = try build(info(bitrate: 50_000_000), options: hardware).arguments
+        #expect(value(camera, "-b:v") == "6220k")
+        // HEVC needs less.
+        let hevc = try build(
+            info(bitrate: 50_000_000), options: VideoEncodingOptions(codec: .hevc, hardwareAcceleration: true)
+        ).arguments
+        #expect(value(hevc, "-b:v") == "4043k")
+    }
+
+    @Test func webmUsesConstrainedQuality() throws {
+        let args = try build(info(bitrate: 1_550_000), VideoSettings(format: .webm)).arguments
+        #expect(value(args, "-crf") == "30")
+        #expect(value(args, "-b:v") == "1162k")
     }
 
     // MARK: Alpha
@@ -156,10 +211,10 @@ struct VideoCommandTests {
         #expect(value(kept, "-alpha_quality") == "0.75")
         #expect(value(kept, "-pix_fmt") == "bgra")
         let dropped = try build(alpha, VideoSettings(), input: mov).arguments
-        #expect(value(dropped, "-c:v") == "h264_videotoolbox")
+        #expect(value(dropped, "-c:v") == "libx264")
         // MP4 cannot carry alpha even when asked.
         let mp4 = try build(alpha, VideoSettings(format: .mp4, preserveTransparency: true), input: mov).arguments
-        #expect(value(mp4, "-c:v") == "h264_videotoolbox")
+        #expect(value(mp4, "-c:v") == "libx264")
     }
 
     // MARK: Audio
@@ -227,6 +282,22 @@ struct VideoProbeParsingTests {
         #expect(info.audioCodecs == ["opus", "vorbis"])
         #expect(abs((info.fps ?? 0) - 29.97) < 0.01)
         #expect(info.duration == 12.5)
+    }
+
+    @Test func readsVideoBitrate() throws {
+        let mp4 = """
+            {"streams":[{"codec_type":"video","codec_name":"h264","width":1920,"height":1080,"bit_rate":"1551236"},
+              {"codec_type":"audio","codec_name":"aac","bit_rate":"128000"}],"format":{"duration":"10","bit_rate":"1686833"}}
+            """
+        #expect(try VideoProbe.parse(Data(mp4.utf8)).videoBitrate == 1_551_236)
+        // Matroska: only the file's rate; audio is subtracted (128 kbit/s assumed when unknown).
+        let mkv = """
+            {"streams":[{"codec_type":"video","codec_name":"vp9","width":640,"height":360},
+              {"codec_type":"audio","codec_name":"opus"}],"format":{"duration":"10","bit_rate":"1128000"}}
+            """
+        #expect(try VideoProbe.parse(Data(mkv.utf8)).videoBitrate == 1_000_000)
+        let unknown = #"{"streams":[{"codec_type":"video","codec_name":"h264","width":2,"height":2}],"format":{}}"#
+        #expect(try VideoProbe.parse(Data(unknown.utf8)).videoBitrate == nil)
     }
 
     @Test func alphaFromPixelFormatAndBitDepth() throws {

@@ -60,12 +60,14 @@ public struct VideoEncodingOptions: Codable, Hashable, Sendable {
     public var codec: VideoCodec
     /// Frame rate cap; only ever lowers the frame rate. Nil keeps the input's.
     public var maxFPS: Int?
-    /// Use VideoToolbox (the Mac's media engine) when it can do the job.
+    /// Use VideoToolbox (the Mac's media engine). Off by default: on Apple Silicon x264/x265 were
+    /// both faster and visibly cleaner at the same size (docs/QUALITY.md, "Rate control").
     public var hardwareAcceleration: Bool
     /// CPU threads for software encoders; nil means all cores.
     public var threads: Int?
 
-    public init(codec: VideoCodec = .h264, maxFPS: Int? = nil, hardwareAcceleration: Bool = true, threads: Int? = nil) {
+    public init(codec: VideoCodec = .h264, maxFPS: Int? = nil, hardwareAcceleration: Bool = false, threads: Int? = nil)
+    {
         self.codec = codec
         self.maxFPS = maxFPS
         self.hardwareAcceleration = hardwareAcceleration
