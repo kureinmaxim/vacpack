@@ -4,6 +4,12 @@ Notable changes to Vacpack. The format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-18
+
+### Fixed
+
+- Sound from a long video stopped after a split second in MP3 and M4A (a 67-minute video gave 0.02 s and 16 KB): taking the cover frame in the same ffmpeg run closed the file as soon as that frame was written. The cover is now made in its own step, and a sound file shorter than 90% of the source is reported as an error instead of a success.
+
 ## [0.3.0] - 2026-10-18
 
 ### Added

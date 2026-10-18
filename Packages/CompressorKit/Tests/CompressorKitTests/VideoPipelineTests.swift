@@ -16,7 +16,7 @@ enum VideoFixtures {
     }
 
     /// Bump when the clips below change, so a stale cache is not reused.
-    static let version = 1
+    static let version = 2
 
     /// Reuses clips from an earlier run; otherwise generates them into a scratch folder and
     /// renames it into place, so a half-written cache is never used.
@@ -84,6 +84,11 @@ enum VideoFixtures {
             path("tiny.mp4"),
         ])
         // Long enough to cancel mid-encode.
+        // A 30 s talk with sound throughout: long enough that cutting the sound short shows.
+        try await ff([
+            "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=10:duration=30", "-f", "lavfi", "-i",
+            "sine=f=330:d=30", "-c:v", "libx264", "-crf", "30", "-c:a", "aac", "-b:a", "96k", path("talk.mp4"),
+        ])
         try await ff([
             "-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=30:duration=30", "-c:v", "libx264", "-preset",
             "ultrafast",
@@ -289,7 +294,24 @@ struct VideoPipelineTests {
             videoTools.ffprobe!,
             arguments: ["-v", "error", "-show_entries", "format_tags=title", "-of", "csv=p=0", m4a.output.path])
         #expect(title.stdoutString.trimmingCharacters(in: .whitespacesAndNewlines) == "normal")
+    }
 
+    /// Regression: a 67-minute video gave 0.02 s of sound when the cover frame was taken in the same
+    /// ffmpeg run. Every format must keep the whole talk, with cover art where the format holds it.
+    @Test(arguments: [VideoFormatChoice.m4a, .mp3, .opus])
+    func keepsTheWholeSound(format: VideoFormatChoice) async throws {
+        let input = try await clip("talk.mp4")
+        let outcome = await run(input, VideoSettings(format: format, audioProfile: .speech))
+        let result = try #require(outcome.result, "\(outcome)")
+        let duration = try #require(
+            try await VideoEngine.duration(of: result.output, ffprobe: videoTools.ffprobe!, runner: ProcessRunner()))
+        #expect(duration > 29, "\(format): \(duration) s of 30 s")
+        let pictures = try await streams(result.output, "v", "stream_disposition=attached_pic")
+        #expect(pictures == (format == .opus ? [] : ["1"]))
+    }
+
+    @Test func opusSpeechIsMono() async throws {
+        let input = try await clip("normal.mp4")
         let opus = try #require(await run(input, VideoSettings(format: .opus, audioProfile: .speech)).result)
         #expect(try await streams(opus.output, "a", "stream=codec_name,channels") == ["opus,1"])
         #expect(try await streams(opus.output, "v", "stream=codec_name").isEmpty)

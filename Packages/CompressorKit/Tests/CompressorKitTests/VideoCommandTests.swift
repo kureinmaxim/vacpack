@@ -266,7 +266,7 @@ struct VideoCommandTests {
         #expect(value(command.arguments, "-c:a") == "libmp3lame")
         #expect(value(command.arguments, "-q:a") == "0")  // SPEC §7: V0, the source's channels.
         #expect(!command.arguments.contains("-ac"))
-        #expect(values(command.arguments, "-map") == ["1:V:0", "0:a:0"])
+        #expect(values(command.arguments, "-map") == ["0:a:0"])
     }
 
     @Test(arguments: [(VideoFormatChoice.mp3, "libmp3lame", "64k"), (.m4a, "aac", "64k"), (.opus, "libopus", "32k")])
@@ -290,19 +290,45 @@ struct VideoCommandTests {
         #expect(value(opus, "-b:a") == "128k")
     }
 
-    @Test func coverArtFromAFrameForMP3AndM4A() throws {
+    @Test func coverArtIsAFrameTakenInItsOwnRun() {
+        let jpeg = URL(filePath: "/work/cover.jpg")
+        let args = VideoCommand.coverArguments(input: input, info: info(), output: jpeg)
+        #expect(value(args, "-ss") == "1.00")  // 10% into a 10 s video.
+        #expect(value(args, "-frames:v") == "1")
+        #expect(value(args, "-update") == "1")
+        #expect(args.last == jpeg.path)
+    }
+
+    /// Regression: `-frames:v 1` on a stream of the audio output made ffmpeg close the file after the
+    /// cover frame, so a 67-minute video gave 0.02 s of sound. The cover is now a finished JPEG input.
+    @Test func coverArtJoinsTheAudioAsAPicture() throws {
+        let jpeg = URL(filePath: "/work/cover.jpg")
         for format in [VideoFormatChoice.mp3, .m4a] {
-            let args = try build(info(), VideoSettings(format: format)).arguments
-            #expect(values(args, "-i") == [input.path, input.path])
-            #expect(value(args, "-ss") == "1.00")  // 10% into a 10 s video.
+            let args = try VideoCommand.build(
+                input: input, output: output, info: info(), settings: VideoSettings(format: format),
+                options: VideoEncodingOptions(), environment: appleSilicon, cover: jpeg
+            ).arguments
+            #expect(values(args, "-i") == [input.path, jpeg.path])
+            #expect(values(args, "-map") == ["0:a:0", "1:0"])
+            #expect(value(args, "-c:v") == "copy")
             #expect(value(args, "-disposition:v:0") == "attached_pic")
-            #expect(value(args, "-c:v") == "mjpeg")
+            #expect(!args.contains("-frames:v"))
         }
-        // Ogg Opus has no simple way to hold a picture: sound only.
-        let opus = try build(info(), VideoSettings(format: .opus)).arguments
+        // Ogg Opus has no simple way to hold a picture: sound only, even when a cover is passed.
+        let opus = try VideoCommand.build(
+            input: input, output: output, info: info(), settings: VideoSettings(format: .opus),
+            options: VideoEncodingOptions(), environment: appleSilicon, cover: jpeg
+        ).arguments
         #expect(values(opus, "-i") == [input.path])
         #expect(opus.contains("-vn"))
         #expect(values(opus, "-map") == ["0:a:0"])
+    }
+
+    @Test func truncatedSoundIsAnError() {
+        #expect(VideoEngine.truncation(actual: 0.02, expected: 4012.8) == "the sound stopped at 0.0 s of 4012.8 s")
+        #expect(VideoEngine.truncation(actual: nil, expected: 30) != nil)
+        #expect(VideoEngine.truncation(actual: 29.9, expected: 30) == nil)
+        #expect(VideoEngine.truncation(actual: 0.5, expected: 1.5) == nil)  // Too short to judge.
     }
 
     @Test func titleFromTheFileNameWhenTheVideoHasNone() throws {

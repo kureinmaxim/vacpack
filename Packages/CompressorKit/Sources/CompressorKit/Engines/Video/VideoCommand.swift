@@ -117,20 +117,34 @@ struct VideoCommand: Equatable {
         var videoToolboxQuality: Bool
     }
 
-    /// The first audio track as an audio file (after the main `-i`). MP3 and M4A get a frame from
-    /// 10% into the video as square cover art, and the file name as the title when the video has none,
-    /// so players and messengers show a proper track. Rate control is in QUALITY.md, "Звук из видео".
-    static func audioArguments(_ format: AudioFormat, profile: AudioProfile, input: URL, info: VideoInfo) -> [String] {
+    /// One frame from 10% into the video, cropped to a square, as JPEG cover art for MP3 and M4A.
+    /// A separate run on purpose: with `-frames:v 1` on a stream of the audio output itself, ffmpeg
+    /// closes the file as soon as that frame is written, and a long video's sound stopped after a
+    /// few milliseconds.
+    static func coverArguments(input: URL, info: VideoInfo, output: URL) -> [String] {
+        [
+            "-hide_banner", "-nostdin", "-y", "-loglevel", "error", "-ss",
+            String(format: "%.2f", max(0, info.duration * 0.1)),
+            "-i", input.path, "-map", "0:V:0", "-frames:v", "1", "-update", "1", "-vf",
+            "crop='min(iw,ih)':'min(iw,ih)',scale=600:600:flags=lanczos", "-q:v", "3", output.path,
+        ]
+    }
+
+    /// The first audio track as an audio file (after the main `-i`), with `cover` (from
+    /// `coverArguments`) as its picture and the file name as the title when the video has none, so
+    /// players and messengers show a proper track. Rate control is in QUALITY.md, "Звук из видео".
+    static func audioArguments(
+        _ format: AudioFormat, profile: AudioProfile, input: URL, info: VideoInfo, cover: URL?
+    ) -> [String] {
         var args: [String] = []
-        if format.holdsCover {
-            let time = String(format: "%.2f", max(0, info.duration * 0.1))
-            args += [
-                "-ss", time, "-i", input.path, "-map", "1:V:0", "-frames:v", "1", "-c:v", "mjpeg", "-vf",
-                "crop='min(iw,ih)':'min(iw,ih)',scale=600:600:flags=lanczos", "-disposition:v:0", "attached_pic",
-            ]
-        }
+        let cover = format.holdsCover ? cover : nil
+        if let cover { args += ["-i", cover.path] }
         args += ["-map", "0:a:0"]
-        if !format.holdsCover { args.append("-vn") }
+        if cover != nil {
+            args += ["-map", "1:0", "-c:v", "copy", "-disposition:v:0", "attached_pic"]
+        } else {
+            args.append("-vn")
+        }
         if profile == .speech {
             // Mono and even loudness (the podcast target, −16 LUFS); loudnorm works at a high
             // internal rate, so the output rate is set back explicitly.
@@ -156,7 +170,7 @@ struct VideoCommand: Equatable {
 
     static func build(
         input: URL, output outputURL: URL, info: VideoInfo, settings: VideoSettings,
-        options: VideoEncodingOptions, environment: Environment
+        options: VideoEncodingOptions, environment: Environment, cover: URL? = nil
     ) throws -> VideoCommand {
         let output = VideoOutput.resolve(settings.format, inputExtension: input.pathExtension)
         var args = ["-hide_banner", "-nostdin", "-y", "-loglevel", "error", "-progress", "pipe:1", "-nostats"]
@@ -168,7 +182,7 @@ struct VideoCommand: Equatable {
         guard case .video(let container) = output else {
             guard case .audio(let format) = output else { preconditionFailure("unreachable: GIF is handled above") }
             guard !info.audioCodecs.isEmpty else { throw VideoError.noAudioTrack }
-            args += audioArguments(format, profile: settings.audioProfile, input: input, info: info)
+            args += audioArguments(format, profile: settings.audioProfile, input: input, info: info, cover: cover)
             if let threads = options.threads { args += ["-threads", String(threads)] }
             args.append(outputURL.path)
             return VideoCommand(arguments: args, output: output, size: nil)

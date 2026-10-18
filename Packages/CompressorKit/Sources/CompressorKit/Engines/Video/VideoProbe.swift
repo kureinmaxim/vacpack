@@ -20,6 +20,8 @@ struct VideoInfo: Sendable, Equatable {
     var videoBitrate: Int? = nil
     /// The container's title tag, if any (audio output names the track after the file otherwise).
     var title: String? = nil
+    /// Seconds of the first audio stream, if known (audio output is checked against it).
+    var audioDuration: Double? = nil
 
     /// Size as shown to the viewer, with rotation applied.
     var displaySize: PixelSize {
@@ -109,7 +111,8 @@ enum VideoProbe {
             audioCodecs: audio.map { $0.codec_name ?? "unknown" },
             videoBitrate: videoBitrate,
             title: output.format.tags?.first { $0.key.lowercased() == "title" }?.value
-                .trimmingCharacters(in: .whitespaces).nilIfEmpty)
+                .trimmingCharacters(in: .whitespaces).nilIfEmpty,
+            audioDuration: audio.first?.duration.flatMap(Double.init))
     }
 
     /// "30000/1001" → 29.97; "0/0" → nil.

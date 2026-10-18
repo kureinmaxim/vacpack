@@ -36,8 +36,17 @@ public struct VideoEngine: Sendable {
             throw VideoError.transparencyNeedsAppleSilicon
         }
         let file = workDirectory.appending(path: "encoded.\(output.fileExtension)")
+        var cover: URL?
+        if case .audio(let format) = output, format.holdsCover, !info.audioCodecs.isEmpty {
+            // Cover art is optional: without a frame the sound is still extracted.
+            let jpeg = workDirectory.appending(path: "cover.jpg")
+            let made = try await runner.run(
+                ffmpeg, arguments: VideoCommand.coverArguments(input: input, info: info, output: jpeg))
+            if made.exitCode == 0, FileManager.default.fileExists(atPath: jpeg.path) { cover = jpeg }
+        }
         var command = try VideoCommand.build(
-            input: input, output: file, info: info, settings: settings, options: options, environment: environment)
+            input: input, output: file, info: info, settings: settings, options: options, environment: environment,
+            cover: cover)
 
         let tracker = FFmpegProgress(duration: info.duration, report: progress)
         var result = try await runner.run(ffmpeg, arguments: command.arguments, onStdoutLine: tracker.handle)
@@ -60,6 +69,14 @@ public struct VideoEngine: Sendable {
             let message = result.stderrString.split(whereSeparator: \.isNewline).suffix(3).joined(separator: " ")
             throw VideoError.ffmpegFailed(message.isEmpty ? "exit status \(result.exitCode)" : message)
         }
+        // ffmpeg can end an output early and still exit 0 (it did with cover art in the same run):
+        // never hand over a sound file that stops short of the source.
+        if case .audio = output, let expected = info.audioDuration ?? Optional(info.duration) {
+            let actual = try await Self.duration(of: file, ffprobe: ffprobe, runner: runner)
+            if let problem = Self.truncation(actual: actual, expected: expected) {
+                throw VideoError.ffmpegFailed(problem)
+            }
+        }
 
         // AVI, FLV, TS, WMV… are rewritten as MP4 even for "Same as input": that conversion is not optional.
         let containerKept = VideoOutput.writableInputExtensions.contains(input.pathExtension.lowercased())
@@ -71,6 +88,25 @@ public struct VideoEngine: Sendable {
             url: file, fileExtension: output.fileExtension, pixelSize: command.size,
             changedOnRequest: formatRequested || resizeRequested,
             resolutionLabel: command.size.map { settings.resolution.presetLabel ?? $0.description })
+    }
+}
+
+extension VideoEngine {
+    /// Seconds of media in `file`, from its container; nil if ffprobe cannot tell.
+    static func duration(of file: URL, ffprobe: URL, runner: ProcessRunner) async throws -> Double? {
+        let result = try await runner.run(
+            ffprobe, arguments: ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", file.path])
+        return Double(result.stdoutString.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    /// A message when the output stops before 90% of the source's sound (sources under 2 s are not
+    /// checked: container rounding is a large share of them).
+    static func truncation(actual: Double?, expected: Double) -> String? {
+        guard expected >= 2 else { return nil }
+        guard let actual, actual >= expected * 0.9 else {
+            return String(format: "the sound stopped at %.1f s of %.1f s", actual ?? 0, expected)
+        }
+        return nil
     }
 }
 
