@@ -10,8 +10,11 @@ options:
 settings:
   base:
     SWIFT_VERSION: "6.0"
+    # Release version, MAJOR.MINOR.PATCH, and its date: the source of truth.
+    # Change both only with scripts/update_version.py (VERSION_MANAGEMENT.md).
     MARKETING_VERSION: "0.1.0"
-    CURRENT_PROJECT_VERSION: "1"
+    VACPACK_RELEASE_DATE: "18.10.2026"
+    CURRENT_PROJECT_VERSION: "1"  # scripts/package.sh stamps a date.time build instead
     # Local builds are ad-hoc signed; Developer ID signing arrives in stage 13.
     CODE_SIGN_STYLE: Manual
     CODE_SIGN_IDENTITY: "-"

@@ -12,6 +12,11 @@ final class AppTests: XCTestCase {
         XCTAssertNil(ProcessInfo.processInfo.environment["APP_SANDBOX_CONTAINER_ID"])
     }
 
+    func testVersionMatchesCompressorKit() {
+        // project.yml feeds Info.plist; scripts/update_version.py keeps CompressorKit's copy in sync.
+        XCTAssertEqual(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String, VacpackVersion.number)
+    }
+
     func testCompressorKitIsLinked() {
         XCTAssertEqual(Tool.ghostscript.executableName, "gs")
     }

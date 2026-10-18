@@ -1,3 +1,4 @@
+import CompressorKit
 import Foundation
 
 let usage = """
@@ -8,6 +9,7 @@ let usage = """
       image <files|folders>...  Compress images (run `image --help` for options)
       video <files|folders>...  Compress or convert videos, make GIFs, extract MP3 (`video --help`)
       gif <files|folders>...    Compress animated GIFs (run `gif --help` for options)
+      --version                 Show the version and its release date
       --help                    Show this help
     """
 
@@ -26,6 +28,9 @@ case "video":
     exit(await runCompress(kind: .video, Array(arguments.dropFirst())))
 case "gif":
     exit(await runCompress(kind: .gif, Array(arguments.dropFirst())))
+case "--version", "-V", "version":
+    print("vacpack \(VacpackVersion.description)")
+    exit(0)
 case nil, "--help", "-h", "help":
     print(usage)
     exit(arguments.isEmpty ? 1 : 0)

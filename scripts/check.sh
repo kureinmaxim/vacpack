@@ -1,5 +1,5 @@
 #!/bin/bash
-# One command for all checks: format lint, package tests, app build and unit tests.
+# One command for all checks: format lint, version sync, package tests, app build and unit tests.
 #   scripts/check.sh        package + app unit tests
 #   scripts/check.sh --ui   also run UI tests (needs Accessibility permission the first time)
 set -euo pipefail
@@ -12,6 +12,9 @@ step() { printf '\n==> %s\n' "$1"; }
 
 step "swift-format lint"
 swift format lint --strict --recursive App AppTests UITests Packages/CompressorKit/Sources Packages/CompressorKit/Tests
+
+step "Version sync"
+python3 scripts/update_version.py status
 
 step "CompressorKit tests"
 swift test --package-path Packages/CompressorKit --quiet

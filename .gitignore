@@ -15,3 +15,6 @@ Packages/CompressorKit/Tests/Fixtures/generated/
 .DS_Store
 xcuserdata/
 *.xcuserstate
+
+# Python bytecode (scripts/update_version.py)
+__pycache__/
