@@ -32,6 +32,8 @@ open Vacpack.xcodeproj
 
 `Vacpack.xcodeproj` is generated from `project.yml` with XcodeGen and is not committed.
 
+The app icon is drawn in code (`design/AppIcon.swift`); `scripts/make-icon.sh` renders every macOS size into the asset catalog.
+
 ## Install on your Mac
 
 ```bash
