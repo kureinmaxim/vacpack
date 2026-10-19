@@ -2,7 +2,8 @@ param(
     [ValidateSet('check', 'run', 'package')]
     [string]$Mode = 'check',
     [string]$ToolsDirectory,
-    [switch]$RequireMediaTests
+    [switch]$RequireMediaTests,
+    [string]$DestinationDirectory
 )
 
 $ErrorActionPreference = 'Stop'
@@ -45,7 +46,7 @@ switch ($Mode) {
         & (Join-Path $repoRoot 'Windows\Vacpack.Windows\bin\Debug\net8.0-windows\Vacpack.exe')
     }
     'package' {
-        $destination = Join-Path $repoRoot '.build\windows\Vacpack'
+        $destination = if ($DestinationDirectory) { [System.IO.Path]::GetFullPath($DestinationDirectory) } else { Join-Path $repoRoot '.build\windows\Vacpack' }
         Invoke-Dotnet publish $application --configuration Release --self-contained false --output $destination --configfile $config --nologo
         Copy-Item -LiteralPath (Join-Path $repoRoot 'Windows\README.md') -Destination (Join-Path $destination 'README.md')
         Write-Output "Windows build: $destination\Vacpack.exe"

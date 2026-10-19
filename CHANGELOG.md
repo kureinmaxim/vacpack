@@ -8,6 +8,10 @@ Notable changes to Vacpack. The format follows [Keep a Changelog](https://keepac
 
 - Experimental Windows application (WPF / .NET 8) with local FFmpeg image, video, GIF and audio processing, drag-and-drop, a cancellable queue, safe output naming and generated-media checks. Build and limitations: [Windows/README.md](Windows/README.md).
 
+### Changed
+
+- Refined the Windows interface with compact controls, settings that follow the queued media types, clearer file results, per-file actions, a fixed output-folder selector and direct recompression with changed settings.
+
 ## [0.3.1] - 2026-10-18
 
 ### Fixed

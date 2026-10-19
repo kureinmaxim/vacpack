@@ -19,9 +19,19 @@ public partial class App : Application
             {
                 window.ShowActivated = false;
                 window.ShowInTaskbar = false;
+                var arguments = e.Args.Skip(2).ToList();
+                var compress = arguments.Remove("--compress");
+                var sizeArgument = arguments.FirstOrDefault(argument => argument.StartsWith("--size=", StringComparison.Ordinal));
+                if (sizeArgument is not null)
+                {
+                    var dimensions = sizeArgument[7..].Split('x');
+                    if (dimensions.Length != 2 || !int.TryParse(dimensions[0], out var widthValue) || !int.TryParse(dimensions[1], out var heightValue)
+                        || widthValue < window.MinWidth || heightValue < window.MinHeight) throw new ArgumentException("Invalid snapshot size.");
+                    window.Width = widthValue; window.Height = heightValue;
+                    arguments.Remove(sizeArgument);
+                }
                 window.Show();
-                var compress = e.Args.Length > 2 && e.Args[2] == "--compress";
-                window.AddPaths(e.Args.Skip(compress ? 3 : 2));
+                window.AddPaths(arguments);
                 if (compress) await window.CompressAsync();
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
                 var content = (FrameworkElement)window.Content;
