@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.IO;
+using System.Windows.Media.Imaging;
 using Vacpack.Core;
 
 namespace Vacpack.Windows;
@@ -9,8 +10,12 @@ public sealed class FileItem(string path) : INotifyPropertyChanged
     public string Path { get; } = path;
     public string Name => System.IO.Path.GetFileName(Path);
     public string Kind => MediaFiles.Detect(Path) switch { MediaKind.Image => "Фото", MediaKind.Video => "Видео", _ => "GIF" };
-    public bool ShowImageIcon => MediaFiles.Detect(Path) == MediaKind.Image;
-    public bool ShowTextIcon => !ShowImageIcon;
+    public BitmapSource? Thumbnail { get; private set; }
+    public bool HasThumbnail => Thumbnail is not null;
+    public bool ShowImageIcon => !HasThumbnail && MediaFiles.Detect(Path) == MediaKind.Image;
+    public bool ShowTextIcon => !HasThumbnail && MediaFiles.Detect(Path) != MediaKind.Image;
+    public bool ShowThumbnailBadge => MediaFiles.Detect(Path) is MediaKind.Video or MediaKind.Gif;
+    public string ThumbnailBadge => MediaFiles.Detect(Path) == MediaKind.Video ? "▶" : "GIF";
     public string KindIcon => MediaFiles.Detect(Path) switch { MediaKind.Image => "▧", MediaKind.Video => "▶", _ => "GIF" };
     public double KindIconSize => Kind == "GIF" ? 10 : 18;
     public string KindColor => Kind switch { "Фото" => "#3E7EB1", "Видео" => "#2D876C", _ => "#B77830" };
@@ -36,6 +41,8 @@ public sealed class FileItem(string path) : INotifyPropertyChanged
     public string Details => Error ?? (Result is { KeptOriginal: true }
         ? "Результат оказался не меньше исходника. Оригинал сохранён.\n" + Path : Result?.Output ?? Path);
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    public void SetThumbnail(BitmapSource thumbnail) { Thumbnail = thumbnail; Changed(); }
 
     public void Reset()
     {

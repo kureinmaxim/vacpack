@@ -3,7 +3,9 @@ param(
     [string]$Mode = 'check',
     [string]$ToolsDirectory,
     [switch]$RequireMediaTests,
-    [string]$DestinationDirectory
+    [string]$DestinationDirectory,
+    [ValidatePattern('^8\.0\.[0-9]+$')]
+    [string]$RuntimeVersion = '8.0.32'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -16,6 +18,7 @@ $config = Join-Path $repoRoot 'Windows\NuGet.Config'
 $publishConfig = Join-Path $repoRoot 'Windows\NuGet.Publish.Config'
 $application = Join-Path $repoRoot 'Windows\Vacpack.Windows\Vacpack.Windows.csproj'
 $checks = Join-Path $repoRoot 'Windows\Vacpack.Tests\Vacpack.Tests.csproj'
+$thumbnailChecks = Join-Path $repoRoot 'Windows\Vacpack.Windows.Tests\Vacpack.Windows.Tests.csproj'
 
 function Invoke-Dotnet {
     & dotnet @args
@@ -23,8 +26,14 @@ function Invoke-Dotnet {
 }
 
 function Publish-Application($destination) {
-    Invoke-Dotnet publish $application --configuration Release --runtime win-x64 --self-contained true --output $destination --configfile $publishConfig --nologo
+    Invoke-Dotnet publish $application --configuration Release --runtime win-x64 --self-contained true "-p:RuntimeFrameworkVersion=$RuntimeVersion" --output $destination --configfile $publishConfig --nologo
     Copy-Item -LiteralPath (Join-Path $repoRoot 'Windows\README.md') -Destination (Join-Path $destination 'README.md')
+    $sourceCommit = & git -c "safe.directory=$repoRoot" -C $repoRoot rev-parse HEAD
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot identify the source commit.' }
+    $sourceChanges = & git -c "safe.directory=$repoRoot" -C $repoRoot status --porcelain
+    $publishedVersion = [regex]::Match((Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'project.yml')), 'MARKETING_VERSION: "([0-9.]+)"').Groups[1].Value
+    [ordered]@{ version = $publishedVersion; sourceCommit = $sourceCommit.Trim(); sourceDirty = [bool]$sourceChanges; runtime = $RuntimeVersion; runtimeIdentifier = 'win-x64'; selfContained = $true } |
+        ConvertTo-Json | Set-Content -LiteralPath (Join-Path $destination 'BUILD.json') -Encoding utf8
 }
 
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) { throw 'Install the .NET 8 SDK: https://dotnet.microsoft.com/download/dotnet/8.0' }
@@ -37,6 +46,9 @@ switch ($Mode) {
         if ($RequireMediaTests) { $testArguments += '--require-media' }
         & (Join-Path $repoRoot 'Windows\Vacpack.Tests\bin\Debug\net8.0\Vacpack.Tests.exe') @testArguments
         if ($LASTEXITCODE -ne 0) { throw "Windows checks failed (exit $LASTEXITCODE)." }
+        Invoke-Dotnet build $thumbnailChecks --configuration Debug --configfile $config --nologo
+        & (Join-Path $repoRoot 'Windows\Vacpack.Windows.Tests\bin\Debug\net8.0-windows\Vacpack.Windows.Tests.exe') @testArguments
+        if ($LASTEXITCODE -ne 0) { throw "Thumbnail checks failed (exit $LASTEXITCODE)." }
         # Render a real row as well as the empty window: catches deferred WPF binding errors.
         $snapshot = Join-Path $repoRoot '.build\windows-ui-check.png'
         $sample = Join-Path $repoRoot 'App\Resources\Assets.xcassets\AppIcon.appiconset\icon_128x128@2x.png'
@@ -62,7 +74,7 @@ switch ($Mode) {
         if (-not $iscc) { throw 'Install Inno Setup 6: https://jrsoftware.org/isdl.php' }
         $version = [regex]::Match((Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'project.yml')), 'MARKETING_VERSION: "([0-9.]+)"').Groups[1].Value
         if (-not $version) { throw 'MARKETING_VERSION not found in project.yml.' }
-        $destination = Join-Path $repoRoot '.build\windows\installer-staging'
+        $destination = if ($DestinationDirectory) { [System.IO.Path]::GetFullPath($DestinationDirectory) } else { Join-Path $repoRoot '.build\windows\installer-staging' }
         $output =Join-Path $repoRoot '.build\windows'
         Publish-Application $destination
         & $iscc "/DAppVersion=$version" "/DSourceDir=$destination" "/DOutputDir=$output" (Join-Path $repoRoot 'Windows\installer\Vacpack.iss')

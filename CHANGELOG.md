@@ -4,9 +4,13 @@ Notable changes to Vacpack. The format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-19
+
 ### Added
 
 - Experimental Windows application (WPF / .NET 8) with local FFmpeg image, video, GIF and audio processing, drag-and-drop, a cancellable queue, safe output naming and generated-media checks. Build and limitations: [Windows/README.md](Windows/README.md).
+- Photo, video and GIF thumbnails on Windows: background loading, EXIF orientation, short-video fallback, bounded memory cache and cancellation when rows are removed.
+- Self-contained Windows x64 installer and portable ZIP, a source-commit manifest and SHA-256 checksums. Release packaging requires committed sources and a clean working tree.
 
 ### Changed
 

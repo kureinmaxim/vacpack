@@ -19,6 +19,8 @@ public partial class MainWindow : Window
     private string? outputDirectory;
     private bool closeAfterCancellation;
     private bool initialized;
+    private ThumbnailService thumbnails = new();
+    private readonly Dictionary<FileItem, CancellationTokenSource> thumbnailJobs = [];
 
     public MainWindow()
     {
@@ -40,7 +42,12 @@ public partial class MainWindow : Window
             var known = files.Select(file => file.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
             var added = 0;
             foreach (var path in MediaFiles.Collect(requested))
-                if (known.Add(path)) { files.Add(new FileItem(path)); added++; }
+                if (known.Add(path))
+                {
+                    var file = new FileItem(path);
+                    files.Add(file); added++;
+                    _ = LoadThumbnailAsync(file);
+                }
             StatusText.Text = added == 0 ? "Поддерживаются JPEG, PNG, WebP, AVIF, TIFF, BMP, видео и GIF" : $"Добавлено файлов: {added}";
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException)
@@ -77,7 +84,40 @@ public partial class MainWindow : Window
             return;
         }
         tools = selected;
+        thumbnails = new ThumbnailService(tools);
+        foreach (var file in files.Where(file => !file.HasThumbnail).ToArray()) _ = LoadThumbnailAsync(file);
         Refresh();
+    }
+
+    private async Task LoadThumbnailAsync(FileItem file)
+    {
+        if (thumbnailJobs.ContainsKey(file)) return;
+        using var source = new CancellationTokenSource();
+        thumbnailJobs.Add(file, source);
+        try
+        {
+            var thumbnail = await thumbnails.LoadAsync(file.Path, source.Token);
+            if (thumbnail is not null && !source.IsCancellationRequested && files.Contains(file)) file.SetThumbnail(thumbnail);
+        }
+        catch (OperationCanceledException) { }
+        finally { thumbnailJobs.Remove(file); }
+    }
+
+    public async Task WaitForThumbnailsAsync()
+    {
+        while (thumbnailJobs.Count > 0) await Task.Delay(25);
+    }
+
+    private void CancelThumbnail(FileItem file)
+    {
+        if (thumbnailJobs.TryGetValue(file, out var source)) source.Cancel();
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        foreach (var source in thumbnailJobs.Values.ToArray()) source.Cancel();
+        thumbnails.ClearCache();
+        base.OnClosed(e);
     }
 
     private void ChooseOutput(object sender, RoutedEventArgs e)
@@ -96,7 +136,11 @@ public partial class MainWindow : Window
         outputDirectory = null; OutputText.Text = "Рядом с исходником"; OutputText.ToolTip = null;
         ResetOutputButton.Visibility = Visibility.Collapsed;
     }
-    private void ClearFiles(object sender, RoutedEventArgs e) { files.Clear(); StatusText.Text = "Добавьте файлы для сжатия"; Refresh(); }
+    private void ClearFiles(object sender, RoutedEventArgs e)
+    {
+        foreach (var file in files) CancelThumbnail(file);
+        files.Clear(); thumbnails.ClearCache(); StatusText.Text = "Добавьте файлы для сжатия"; Refresh();
+    }
     private void CancelJobs(object sender, RoutedEventArgs e) { cancellation?.Cancel(); CancelButton.IsEnabled = false; StatusText.Text = "Останавливаем обработку…"; }
     private async void StartCompression(object sender, RoutedEventArgs e)
     {
@@ -240,7 +284,7 @@ public partial class MainWindow : Window
     private void FilesKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.Delete || cancellation is not null) return;
-        foreach (var file in FileGrid.SelectedItems.Cast<FileItem>().ToArray()) files.Remove(file);
+        foreach (var file in FileGrid.SelectedItems.Cast<FileItem>().ToArray()) { CancelThumbnail(file); files.Remove(file); }
         Refresh(); e.Handled = true;
     }
     private void OpenSelected(object sender, MouseButtonEventArgs e)
@@ -268,7 +312,7 @@ public partial class MainWindow : Window
 
     private void RemoveItem(object sender, RoutedEventArgs e)
     {
-        if (cancellation is null && sender is FrameworkElement { DataContext: FileItem file }) { files.Remove(file); Refresh(); }
+        if (cancellation is null && sender is FrameworkElement { DataContext: FileItem file }) { CancelThumbnail(file); files.Remove(file); Refresh(); }
         e.Handled = true;
     }
 

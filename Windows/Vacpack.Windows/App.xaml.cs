@@ -33,6 +33,7 @@ public partial class App : Application
                 window.Show();
                 window.AddPaths(arguments);
                 if (compress) await window.CompressAsync();
+                await window.WaitForThumbnailsAsync();
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
                 var content = (FrameworkElement)window.Content;
                 content.UpdateLayout();
