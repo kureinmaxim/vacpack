@@ -1,0 +1,122 @@
+<Window x:Class="Vacpack.Windows.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Vacpack — Windows experiment"
+ Width="1120" Height="780" MinWidth="940" MinHeight="650" WindowStartupLocation="CenterScreen"
+ Background="#FAF9F5" FontFamily="Segoe UI" FontSize="13" Foreground="{StaticResource Ink}"
+ Icon="Resources/AppIcon.png" AllowDrop="True" DragOver="OnDragOver" Drop="OnDrop" Closing="OnClosing">
+ <Grid Margin="28,22,28,20">
+  <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+  <Grid Margin="0,0,0,20">
+   <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+   <Image Source="Resources/AppIcon.png" Width="60" Height="60" Margin="0,0,14,0" />
+   <StackPanel Grid.Column="1" VerticalAlignment="Center">
+    <TextBlock Text="Vacpack" FontSize="29" FontWeight="SemiBold" />
+    <TextBlock Text="Меньше размер. Больше места." Foreground="{StaticResource Muted}" Margin="0,2,0,0" />
+   </StackPanel>
+   <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+    <Border Background="#F6D774" CornerRadius="5" Padding="10,5"><TextBlock Text="Windows · эксперимент" FontSize="12" /></Border>
+    <TextBlock x:Name="VersionText" HorizontalAlignment="Right" Style="{StaticResource Label}" Margin="0,5,0,0" />
+   </StackPanel>
+  </Grid>
+  <Border x:Name="ToolsBanner" Grid.Row="1" Background="#FFF1CC" BorderBrush="#E8B84A" BorderThickness="1" CornerRadius="7" Padding="12" Margin="0,0,0,16">
+   <DockPanel><Button DockPanel.Dock="Right" Content="Указать папку…" Click="ChooseTools" Margin="12,0,0,0" />
+    <TextBlock x:Name="ToolsText" TextWrapping="Wrap" VerticalAlignment="Center" /></DockPanel>
+  </Border>
+  <Grid Grid.Row="2">
+   <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="24" /><ColumnDefinition Width="258" /></Grid.ColumnDefinitions>
+   <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+    <DockPanel Margin="0,0,0,12" x:Name="FileActions">
+     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><Button Content="_Файлы…" Click="ChooseFiles" Margin="0,0,8,0" /><Button Content="_Папка…" Click="ChooseFolder" /></StackPanel>
+     <TextBlock x:Name="CountText" Text="Ваши файлы" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
+    </DockPanel>
+    <Border Grid.Row="1" BorderBrush="#DED8CC" BorderThickness="1" CornerRadius="10" Background="White" ClipToBounds="True">
+     <Grid>
+      <DataGrid x:Name="FileGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False"
+       CanUserResizeRows="False" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#F0EDE7" BorderThickness="0"
+       Background="White" RowBackground="White" AlternatingRowBackground="#FDFCF9" SelectionMode="Extended"
+       HeadersVisibility="Column" RowHeaderWidth="0" EnableRowVirtualization="True" KeyDown="FilesKeyDown"
+       MouseDoubleClick="OpenSelected" Visibility="Collapsed">
+       <DataGrid.RowStyle><Style TargetType="DataGridRow"><Setter Property="ToolTip" Value="{Binding Details}" /></Style></DataGrid.RowStyle>
+       <DataGrid.Columns>
+        <DataGridTemplateColumn Header="Файл" Width="*" MinWidth="140"><DataGridTemplateColumn.CellTemplate><DataTemplate>
+         <StackPanel><TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="{Binding Status}" FontSize="11" Foreground="{StaticResource Muted}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
+          <ProgressBar Value="{Binding Progress, Mode=OneWay}" Height="3" Foreground="{StaticResource Ochre}" Background="#F0EDE7" BorderThickness="0" Margin="0,7,0,0" />
+         </StackPanel>
+        </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+        <DataGridTextColumn Header="До" Binding="{Binding InputSize}" Width="80" />
+        <DataGridTextColumn Header="После" Binding="{Binding OutputSize}" Width="80" />
+        <DataGridTextColumn Header="Сжато" Binding="{Binding Saved}" Width="72" />
+       </DataGrid.Columns>
+      </DataGrid>
+      <Grid x:Name="EmptyState" Margin="28">
+       <Rectangle Stroke="#D9A033" StrokeThickness="1.5" StrokeDashArray="5 5" RadiusX="12" RadiusY="12" />
+       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="22">
+        <Image Source="Resources/AppIcon.png" Width="112" Height="112" Margin="0,0,0,20" />
+        <TextBlock Text="Сложите файлы сюда" FontSize="25" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" />
+        <TextBlock Text="Фото, видео, GIF — или целую папку" Foreground="{StaticResource Muted}" HorizontalAlignment="Center" Margin="0,9,0,22" TextAlignment="Center" TextWrapping="Wrap" />
+        <Button Content="Выбрать файлы…" Click="ChooseFiles" Background="#F6D774" BorderBrush="#D9A033" HorizontalAlignment="Center" Padding="22,10" />
+       </StackPanel>
+      </Grid>
+     </Grid>
+    </Border>
+    <DockPanel Grid.Row="2" Margin="0,12,0,0">
+     <Button x:Name="ClearButton" DockPanel.Dock="Right" Content="Очистить" Click="ClearFiles" Padding="10,5" />
+     <Button x:Name="RetryButton" DockPanel.Dock="Right" Content="Повторить" Click="RetryFiles" Padding="10,5" Margin="0,0,8,0" />
+     <TextBlock Text="Исходники остаются на месте" Style="{StaticResource Label}" VerticalAlignment="Center" />
+    </DockPanel>
+   </Grid>
+   <Border Grid.Column="2" Background="#F1EEE6" CornerRadius="10" Padding="18">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+     <StackPanel x:Name="SettingsPanel">
+      <TextBlock Text="Как сжать" FontSize="19" FontWeight="SemiBold" Margin="0,0,0,18" />
+      <Label Target="{Binding ElementName=QualityBox}" Content="Качество" Padding="0" />
+      <ComboBox x:Name="QualityBox" SelectedIndex="2" AutomationProperties.Name="Качество">
+       <ComboBoxItem Content="Наивысшее" /><ComboBoxItem Content="Высокое" /><ComboBoxItem Content="Хорошее" /><ComboBoxItem Content="Среднее" /><ComboBoxItem Content="Приемлемое" />
+      </ComboBox>
+      <Label Target="{Binding ElementName=ImageFormatBox}" Content="Формат фото" Padding="0" />
+      <ComboBox x:Name="ImageFormatBox" SelectedIndex="0" AutomationProperties.Name="Формат фото">
+       <ComboBoxItem Content="Как в исходнике" /><ComboBoxItem Content="JPEG" /><ComboBoxItem Content="PNG" /><ComboBoxItem Content="WebP" /><ComboBoxItem Content="AVIF" />
+      </ComboBox>
+      <Label Target="{Binding ElementName=VideoFormatBox}" Content="Формат видео" Padding="0" />
+      <ComboBox x:Name="VideoFormatBox" SelectedIndex="0" AutomationProperties.Name="Формат видео">
+       <ComboBoxItem Content="Как в исходнике" /><ComboBoxItem Content="MP4 · H.264" /><ComboBoxItem Content="WebM · VP9" /><ComboBoxItem Content="GIF" /><ComboBoxItem Content="Только звук · M4A" /><ComboBoxItem Content="Только звук · MP3" /><ComboBoxItem Content="Только звук · Opus" />
+      </ComboBox>
+      <Label Target="{Binding ElementName=SizeBox}" Content="Длинная сторона" Padding="0" />
+      <ComboBox x:Name="SizeBox" SelectedIndex="0" AutomationProperties.Name="Длинная сторона">
+       <ComboBoxItem Content="Исходный размер" Tag="0" /><ComboBoxItem Content="Не более 3840 px" Tag="3840" /><ComboBoxItem Content="Не более 2560 px" Tag="2560" /><ComboBoxItem Content="Не более 1920 px" Tag="1920" /><ComboBoxItem Content="Не более 1280 px" Tag="1280" /><ComboBoxItem Content="Не более 800 px" Tag="800" />
+      </ComboBox>
+      <Grid><Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="12" /><ColumnDefinition /></Grid.ColumnDefinitions>
+       <StackPanel><TextBlock Text="Видео, fps" Style="{StaticResource Label}" /><ComboBox x:Name="VideoFpsBox" SelectedIndex="0" AutomationProperties.Name="Частота кадров видео">
+        <ComboBoxItem Content="Исходная" Tag="0" /><ComboBoxItem Content="60" Tag="60" /><ComboBoxItem Content="30" Tag="30" /><ComboBoxItem Content="24" Tag="24" />
+       </ComboBox></StackPanel>
+       <StackPanel Grid.Column="2"><TextBlock Text="GIF, fps" Style="{StaticResource Label}" /><ComboBox x:Name="GifFpsBox" SelectedIndex="1" AutomationProperties.Name="Частота кадров GIF">
+        <ComboBoxItem Content="10" Tag="10" /><ComboBoxItem Content="15" Tag="15" /><ComboBoxItem Content="20" Tag="20" /><ComboBoxItem Content="30" Tag="30" /><ComboBoxItem Content="50" Tag="50" />
+       </ComboBox></StackPanel>
+      </Grid>
+      <CheckBox x:Name="RemoveAudioBox" Content="Убрать звук из видео" />
+      <CheckBox x:Name="SpeechBox" Content="Речь / подкаст для звука" ToolTip="Для M4A, MP3 и Opus: моно, выравнивание громкости и низкий битрейт" />
+      <CheckBox x:Name="DatesBox" Content="Сохранить даты файлов" IsChecked="True" />
+      <Separator Margin="0,12,0,14" Background="#D8D2C6" />
+      <TextBlock Text="Куда сохранить" FontWeight="SemiBold" Margin="0,0,0,8" />
+      <TextBlock x:Name="OutputText" Text="Рядом с исходником" TextWrapping="Wrap" Style="{StaticResource Label}" />
+      <WrapPanel Margin="0,9,0,0"><Button Content="Выбрать…" Click="ChooseOutput" Padding="10,5" Margin="0,0,6,0" /><Button Content="Сбросить" Click="ResetOutput" Padding="10,5" /></WrapPanel>
+      <TextBlock Text="PNG сжимается без потерь. Размеры и частота кадров только уменьшаются." Style="{StaticResource Label}" TextWrapping="Wrap" Margin="0,16,0,0" />
+     </StackPanel>
+    </ScrollViewer>
+   </Border>
+  </Grid>
+  <Border Grid.Row="3" BorderBrush="#DED8CC" BorderThickness="0,1,0,0" Margin="0,18,0,0" Padding="0,16,0,0">
+   <DockPanel>
+    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+     <Button x:Name="CancelButton" Content="Остановить" Click="CancelJobs" Visibility="Collapsed" Margin="0,0,10,0" />
+     <Button x:Name="CompressButton" Content="_Сжать файлы" Click="StartCompression" Background="#E8B84A" BorderBrush="#D9A033" FontWeight="SemiBold" MinWidth="180" Padding="22,11" IsEnabled="False" />
+    </StackPanel>
+    <StackPanel VerticalAlignment="Center" Margin="0,0,14,0">
+     <TextBlock x:Name="SummaryText" Text="Всё остаётся на вашем компьютере" FontWeight="SemiBold" FontSize="15" />
+     <TextBlock x:Name="StatusText" Text="Результат сохраняется, только если он меньше исходника" Style="{StaticResource Label}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
+    </StackPanel>
+   </DockPanel>
+  </Border>
+ </Grid>
+</Window>

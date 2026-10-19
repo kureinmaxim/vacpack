@@ -2,6 +2,8 @@
 
 Vacpack is a native macOS app and command-line tool that makes images, videos and GIFs smaller, entirely offline. Like vacuum packing: everything the file does not need is pumped out.
 
+**Windows experiment:** this branch also includes a native WPF application with local image, video, GIF and audio processing. See [Windows/README.md](Windows/README.md) for building, running and current limitations.
+
 **Version:** `0.3.1`, released 18.10.2026 · [changelog](CHANGELOG.md) · [how versions are managed](VERSION_MANAGEMENT.md)
 
 <p align="center">

@@ -2,6 +2,8 @@
 
 Как собрать Vacpack из исходников: приложение для разработки, команду `vacpack`, тесты и DMG для установки.
 
+Экспериментальная Windows-версия собирается отдельно на .NET 8: инструкция в [Windows/README.md](Windows/README.md), команды — `scripts/windows.ps1 -Mode check|run|package`. Остальная часть этого документа относится к macOS.
+
 Связано: [README.md](README.md) · [VERSION_MANAGEMENT.md](VERSION_MANAGEMENT.md) · [CHANGELOG.md](CHANGELOG.md) · [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ## Что получается
