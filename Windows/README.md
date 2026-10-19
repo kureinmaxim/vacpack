@@ -109,11 +109,27 @@ Windows\Vacpack.Windows\bin\Debug\net8.0-windows\Vacpack.exe --snapshot C:\temp\
 ```
 
 Результат: `.build/windows/Vacpack/Vacpack.exe` и соседние файлы. Переносить
-нужно всю папку. Это framework-dependent сборка: для запуска нужен
-[.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
-(не только базовый .NET Runtime). Установщик и подпись пока не сделаны.
+нужно всю папку. Сборка self-contained (win-x64): среда .NET 8 входит в папку,
+отдельно ставить Runtime не нужно. Подпись пока не сделана.
 FFmpeg устанавливается отдельно; бинарники кодеров не включаются в сборку.
 Приложение — GPL-3.0; текст `LICENSE` лежит рядом с EXE.
+
+Для self-contained публикации скрипт скачивает runtime-пакеты win-x64 с nuget.org
+(`Windows/NuGet.Publish.Config`); обычные `check` и `run` по-прежнему работают
+без сети.
+
+## Установщик
+
+```powershell
+.\scripts\windows.ps1 -Mode installer
+```
+
+Нужен [Inno Setup 6](https://jrsoftware.org/isdl.php). Скрипт публикует
+приложение в `.build/windows/installer-staging` и собирает
+`.build/windows/Vacpack-Setup-<версия>.exe` по `Windows/installer/Vacpack.iss`.
+Версия берётся из `project.yml`. Установщик ставит приложение в профиль
+пользователя (права администратора не нужны), создаёт ярлык в меню «Пуск»,
+по желанию на рабочем столе, и деинсталлятор. FFmpeg по-прежнему ставится отдельно.
 
 Чтобы собрать новое окно для сравнения с уже запущенной версией:
 

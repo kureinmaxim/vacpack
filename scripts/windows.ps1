@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('check', 'run', 'package')]
+    [ValidateSet('check', 'run', 'package', 'installer')]
     [string]$Mode = 'check',
     [string]$ToolsDirectory,
     [switch]$RequireMediaTests,
@@ -13,12 +13,18 @@ $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
 $env:DOTNET_NOLOGO = '1'
 if ($ToolsDirectory) { $env:VACPACK_TOOLS = (Resolve-Path -LiteralPath $ToolsDirectory).Path }
 $config = Join-Path $repoRoot 'Windows\NuGet.Config'
+$publishConfig = Join-Path $repoRoot 'Windows\NuGet.Publish.Config'
 $application = Join-Path $repoRoot 'Windows\Vacpack.Windows\Vacpack.Windows.csproj'
 $checks = Join-Path $repoRoot 'Windows\Vacpack.Tests\Vacpack.Tests.csproj'
 
 function Invoke-Dotnet {
     & dotnet @args
     if ($LASTEXITCODE -ne 0) { throw "dotnet failed (exit $LASTEXITCODE)." }
+}
+
+function Publish-Application($destination) {
+    Invoke-Dotnet publish $application --configuration Release --runtime win-x64 --self-contained true --output $destination --configfile $publishConfig --nologo
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'Windows\README.md') -Destination (Join-Path $destination 'README.md')
 }
 
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) { throw 'Install the .NET 8 SDK: https://dotnet.microsoft.com/download/dotnet/8.0' }
@@ -47,9 +53,20 @@ switch ($Mode) {
     }
     'package' {
         $destination = if ($DestinationDirectory) { [System.IO.Path]::GetFullPath($DestinationDirectory) } else { Join-Path $repoRoot '.build\windows\Vacpack' }
-        Invoke-Dotnet publish $application --configuration Release --self-contained false --output $destination --configfile $config --nologo
-        Copy-Item -LiteralPath (Join-Path $repoRoot 'Windows\README.md') -Destination (Join-Path $destination 'README.md')
+        Publish-Application $destination
         Write-Output "Windows build: $destination\Vacpack.exe"
-        Write-Output 'Requires the .NET 8 Desktop Runtime. FFmpeg and ffprobe are installed separately.'
+        Write-Output 'Self-contained: .NET is bundled. FFmpeg and ffprobe are installed separately.'
+    }
+    'installer' {
+        $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe", "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+        if (-not $iscc) { throw 'Install Inno Setup 6: https://jrsoftware.org/isdl.php' }
+        $version = [regex]::Match((Get-Content -Raw -LiteralPath (Join-Path $repoRoot 'project.yml')), 'MARKETING_VERSION: "([0-9.]+)"').Groups[1].Value
+        if (-not $version) { throw 'MARKETING_VERSION not found in project.yml.' }
+        $destination = Join-Path $repoRoot '.build\windows\installer-staging'
+        $output =Join-Path $repoRoot '.build\windows'
+        Publish-Application $destination
+        & $iscc "/DAppVersion=$version" "/DSourceDir=$destination" "/DOutputDir=$output" (Join-Path $repoRoot 'Windows\installer\Vacpack.iss')
+        if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed (exit $LASTEXITCODE)." }
+        Write-Output "Windows installer: $output\Vacpack-Setup-$version.exe"
     }
 }
