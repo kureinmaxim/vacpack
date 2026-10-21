@@ -10,10 +10,10 @@ Windows пока выпускается как предварительная в
 
 | Что | Чем собирается | Где лежит |
 |---|---|---|
-| Приложение Debug (для разработки и тестов) | `scripts/check.sh` или Xcode | `.build/xcode/Build/Products/Debug/Vacpack.app` |
-| Приложение Release (универсальное: Apple Silicon и Intel) | `scripts/package.sh` | `.build/release/Build/Products/Release/Vacpack.app` |
-| DMG для установки | `scripts/package.sh` | `.build/dist/Vacpack-X.Y.Z.dmg` |
-| Команда `vacpack` | `swift build` | `Packages/CompressorKit/.build/{debug,release}/vacpack` |
+| macOS: приложение Debug (для разработки и тестов) | `scripts/check.sh` или Xcode | `.build/xcode/Build/Products/Debug/Vacpack.app` |
+| macOS: приложение Release (универсальное: Apple Silicon и Intel) | `scripts/package.sh` | `.build/release/Build/Products/Release/Vacpack.app` |
+| macOS: DMG для установки | `scripts/package.sh` | `.build/dist/Vacpack-X.Y.Z.dmg` |
+| macOS: команда `vacpack` | `swift build` | `Packages/CompressorKit/.build/{debug,release}/vacpack` |
 | Windows Debug | `scripts/windows.ps1 -Mode check` | `Windows/Vacpack.Windows/bin/Debug/net8.0-windows/Vacpack.exe` |
 | Windows x64, со встроенной .NET | `scripts/windows.ps1 -Mode package` | `.build/windows/Vacpack/Vacpack.exe` и соседние файлы |
 | Установщик Windows | `scripts/windows.ps1 -Mode installer` | `.build/windows/Vacpack-Setup-X.Y.Z.exe` |
@@ -107,7 +107,7 @@ python scripts/update_version.py status
   Приложение ищет утилиты по абсолютным путям — `/opt/homebrew/bin`, `/usr/local/bin`, `/opt/local/bin` — и не через shell, поэтому алиасы вроде `gs=git status` не мешают.
 - **Python 3** — только для `scripts/update_version.py` (стандартная библиотека, подойдёт и системный `/usr/bin/python3` 3.9).
 
-## Шаг 1. Подготовить копию
+## macOS, шаг 1. Подготовить копию
 
 ```bash
 git clone https://github.com/kureinmaxim/vacpack.git
@@ -123,7 +123,7 @@ scripts/bootstrap.sh
 sudo xcodebuild -runFirstLaunch
 ```
 
-## Шаг 2. Разработка
+## macOS, шаг 2. Разработка
 
 ```bash
 open Vacpack.xcodeproj
@@ -159,7 +159,7 @@ scripts/snapshot.sh     # → .build/snapshots/*.png
 
 Скриншоты для README — `scripts/snapshot.sh --readme`: берёт демо-файлы из `scripts/make-demo.sh` (три пейзажа, нарисованные кодом в `design/DemoImages.swift`, видео с фракталом и GIF «Жизнь» из генераторов ffmpeg — всё своё, публиковать можно), снимает пустое окно и результаты в светлой и тёмной теме и сжимает PNG в `docs/images/` через pngquant.
 
-## Шаг 3. Проверки
+## macOS, шаг 3. Проверки
 
 ```bash
 scripts/check.sh        # всё, кроме UI-тестов
@@ -170,7 +170,7 @@ scripts/check.sh --ui   # плюс UI-тесты
 
 При первом запуске UI-тестов macOS просит разрешить управление компьютером программе, которая их запускает (`VacpackUITests-Runner` или Xcode): **Системные настройки → Конфиденциальность и безопасность → Универсальный доступ**.
 
-## Шаг 4. Версия — перед релизом
+## macOS, шаг 4. Версия — перед релизом
 
 Версия MAJOR.MINOR.PATCH живёт только в `project.yml` и меняется только скриптом — подробно в [VERSION_MANAGEMENT.md](VERSION_MANAGEMENT.md):
 
@@ -181,7 +181,7 @@ python3 scripts/update_version.py status
 
 Затем допишите заметки под новой версией в `CHANGELOG.md` и прогоните `scripts/check.sh --ui`.
 
-## Шаг 5. Release и DMG
+## macOS, шаг 5. Release и DMG
 
 ```bash
 scripts/package.sh   # → .build/dist/Vacpack-X.Y.Z.dmg
@@ -203,7 +203,7 @@ scripts/install.sh   # поставить этот DMG в «Программы»
 
 `scripts/package.sh --open` вместо этого открывает DMG в Finder — чтобы посмотреть его так, как увидят другие, и поставить вручную перетаскиванием. Для своего Mac это хуже `install.sh` (Dock не обновится), а DMG, который вы будете публиковать, в Finder лучше не открывать: однажды после этого локальный файл изменился, и его контрольная сумма перестала совпадать. Опубликованные копии остались верными, но проверяйте копию.
 
-## Иконка
+## macOS: иконка
 
 Иконка нарисована кодом в `design/AppIcon.swift`. Готовые PNG всех размеров лежат в `App/Resources/Assets.xcassets/AppIcon.appiconset` и коммитятся. После правки рисунка:
 
@@ -213,23 +213,23 @@ scripts/make-icon.sh
 
 Затем пересоберите приложение.
 
-## Подпись и другие Mac
+## macOS: подпись и другие Mac
 
 Сборка подписана ad-hoc с hardened runtime, без нотаризации — Developer ID и нотаризация будут на этапе 13 ([docs/PLAN.md](docs/PLAN.md)). На Mac, где собирали, приложение открывается без вопросов. На другом Mac macOS его заблокирует: **Системные настройки → Конфиденциальность и безопасность → Всё равно открыть**. Там тоже нужны утилиты Homebrew из раздела «Требования» (без XcodeGen).
 
 ## Частые проблемы
 
-**`Xcode needs its first-launch system components`** — выполните `sudo xcodebuild -runFirstLaunch` (шаг 1).
+**macOS: `Xcode needs its first-launch system components`** — выполните `sudo xcodebuild -runFirstLaunch` (шаг 1).
 
-**`Missing prerequisites: … brew install …`** — выполните напечатанную команду и снова `scripts/bootstrap.sh`.
+**macOS: `Missing prerequisites: … brew install …`** — выполните напечатанную команду и снова `scripts/bootstrap.sh`.
 
-**`xcodebuild failed; full log: .build/xcodebuild.log`** — ищите в журнале первую строку с `error:`. Если новый файл «не найден», запустите `xcodegen generate`.
+**macOS: `xcodebuild failed; full log: .build/xcodebuild.log`** — ищите в журнале первую строку с `error:`. Если новый файл «не найден», запустите `xcodegen generate`.
 
-**UI-тесты висят или падают при первом запуске** — не выдано разрешение «Универсальный доступ» (шаг 3).
+**macOS: UI-тесты висят или падают при первом запуске** — не выдано разрешение «Универсальный доступ» (шаг 3).
 
-**`package failed: version files are out of sync`** — кто-то поправил версию руками. `python3 scripts/update_version.py status` покажет файл, `sync` вернёт версию из `project.yml`.
+**macOS: `package failed: version files are out of sync`** — кто-то поправил версию руками. `python3 scripts/update_version.py status` покажет файл, `sync` вернёт версию из `project.yml`.
 
-**В Dock старая или пустая иконка** — ставьте через `scripts/install.sh`: он перезапускает Dock. Если иконка всё равно старая:
+**macOS: в Dock старая или пустая иконка** — ставьте через `scripts/install.sh`: он перезапускает Dock. Если иконка всё равно старая:
 
 ```bash
 touch /Applications/Vacpack.app
@@ -237,7 +237,7 @@ touch /Applications/Vacpack.app
 killall Dock
 ```
 
-**Сжатый файл не появился, в строке «would not get smaller — original kept»** — так и задумано: результат вышел не меньше исходника, и оригинал оставлен. Попробуйте уровень качества ниже или меньшее разрешение.
+**macOS: сжатый файл не появился, в строке «would not get smaller — original kept»** — так и задумано: результат вышел не меньше исходника, и оригинал оставлен. Попробуйте уровень качества ниже или меньшее разрешение.
 
 **Windows: `Release archive is incomplete`** — релиз собирался во встроенном Windows PowerShell 5.1. Его `Compress-Archive` записывает имена в ZIP как `Vacpack\BUILD.json`, а проверка ищет `Vacpack/BUILD.json`. Запускайте `scripts/release-windows.ps1` в `pwsh`.
 

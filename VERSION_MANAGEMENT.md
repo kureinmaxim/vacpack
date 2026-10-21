@@ -74,6 +74,10 @@ Updated CHANGELOG.md
 
 ## Порядок релиза
 
+Версия и заметки в `CHANGELOG.md` общие для обеих платформ (шаги 1–2 ниже); сборка и выпуск у платформ разные.
+
+### macOS (DMG)
+
 1. Поднять версию:
    ```bash
    python3 scripts/update_version.py bump patch

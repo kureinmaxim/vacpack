@@ -4,7 +4,7 @@ Vacpack makes images, videos and GIFs smaller, entirely offline. It has a native
 
 **Windows preview:** a self-contained x64 installer and portable ZIP, with photo/video thumbnails, a cancellable queue and local image, video, GIF and audio processing. .NET is included; FFmpeg and ffprobe are installed separately. See [Windows/README.md](Windows/README.md) for installation and limitations, or the [Windows preview release](https://github.com/kureinmaxim/vacpack/releases/tag/v0.4.0-windows-preview.1).
 
-**Version:** `0.4.1`, released 21.10.2026 · [changelog](CHANGELOG.md) · [how versions are managed](VERSION_MANAGEMENT.md)
+**Version:** `0.5.1`, released 21.10.2026 · [changelog](CHANGELOG.md) · [how versions are managed](VERSION_MANAGEMENT.md)
 
 <p align="center">
   <picture>

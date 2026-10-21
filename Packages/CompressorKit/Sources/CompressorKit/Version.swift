@@ -4,7 +4,7 @@
 /// (see VERSION_MANAGEMENT.md).
 public enum VacpackVersion {
     /// Semantic version, MAJOR.MINOR.PATCH.
-    public static let number = "0.4.1"
+    public static let number = "0.5.1"
     /// Release date, DD.MM.YYYY.
     public static let releaseDate = "21.10.2026"
 

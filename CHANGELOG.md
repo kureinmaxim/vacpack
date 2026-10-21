@@ -4,6 +4,8 @@ Notable changes to Vacpack. The format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-21
+
 ## [0.5.0] - 2026-10-21
 
 ### Added
