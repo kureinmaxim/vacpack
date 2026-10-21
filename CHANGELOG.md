@@ -4,6 +4,12 @@ Notable changes to Vacpack. The format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-21
+
+### Added
+
+- Windows: the developer and a link to the project on GitHub in the window header, as in the macOS About panel.
+
 ## [0.4.0] - 2026-10-19
 
 ### Added

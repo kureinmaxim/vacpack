@@ -336,6 +336,14 @@ public partial class MainWindow : Window
         if (e.Key == Key.Enter && CompressButton.IsEnabled) { StartCompression(sender, e); e.Handled = true; }
     }
 
+    private const string ProjectUrl = "https://github.com/kureinmaxim/vacpack";
+
+    private void OpenProjectPage(object sender, RoutedEventArgs e)
+    {
+        try { Process.Start(new ProcessStartInfo(ProjectUrl) { UseShellExecute = true })?.Dispose(); }
+        catch (Win32Exception error) { StatusText.Text = error.Message; }
+    }
+
     private void OpenFolder(FileItem file)
     {
         var path = file.Result?.Output ?? file.Path;

@@ -16,6 +16,12 @@
    <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
     <Border Background="#E9EDF2" CornerRadius="5" Padding="8,4" HorizontalAlignment="Right"><TextBlock Text="Экспериментальная версия" FontSize="11" Foreground="{StaticResource Muted}" /></Border>
     <TextBlock x:Name="VersionText" HorizontalAlignment="Right" Style="{StaticResource Label}" Margin="0,5,0,0" />
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,3,0,0">
+     <TextBlock Text="Разработчик: Kurein M.N. · " Style="{StaticResource Label}" VerticalAlignment="Center" />
+     <Button Click="OpenProjectPage" Style="{StaticResource LinkButton}" MinHeight="0" Padding="0" ToolTip="Открыть страницу проекта на GitHub" AutomationProperties.Name="Страница проекта на GitHub">
+      <TextBlock Text="github.com/kureinmaxim/vacpack" FontSize="11" Foreground="#416B94" TextDecorations="Underline" />
+     </Button>
+    </StackPanel>
    </StackPanel>
   </Grid>
   <Border x:Name="ToolsBanner" Grid.Row="1" Background="#FFF5DD" BorderBrush="#ECD49A" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,16">
