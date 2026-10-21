@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        LanguageBox.SelectedItem = LanguageBox.Items.Cast<ComboBoxItem>().First(item => (string)item.Tag == Loc.Language);
         initialized = true;
         FileGrid.ItemsSource = files;
         var version = Assembly.GetExecutingAssembly().GetName().Version;
@@ -48,39 +49,48 @@ public partial class MainWindow : Window
                     files.Add(file); added++;
                     _ = LoadThumbnailAsync(file);
                 }
-            StatusText.Text = added == 0 ? "Поддерживаются JPEG, PNG, WebP, AVIF, TIFF, BMP, видео и GIF" : $"Добавлено файлов: {added}";
+            StatusText.Text = added == 0 ? Loc.T("Поддерживаются JPEG, PNG, WebP, AVIF, TIFF, BMP, видео и GIF") : Loc.T("Добавлено файлов: {0}", added);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or ArgumentException)
         {
-            StatusText.Text = "Не удалось добавить файлы: " + error.Message;
+            StatusText.Text = Loc.T("Не удалось добавить файлы: ") + error.Message;
         }
         Refresh();
+    }
+
+    private void LanguageChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!initialized || LanguageBox.SelectedItem is not ComboBoxItem { Tag: string choice } || choice == Loc.Language) return;
+        Loc.Save(choice);
+        if (MessageBox.Show(this, Loc.T("Перезапустить Vacpack, чтобы применить язык?"), "Vacpack", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        if (Environment.ProcessPath is { } executable) Process.Start(new ProcessStartInfo(executable) { UseShellExecute = false })?.Dispose();
+        Close();
     }
 
     private void ChooseFiles(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog
         {
-            Title = "Добавить файлы в Vacpack", Multiselect = true,
-            Filter = "Фото, видео и GIF|*.jpg;*.jpeg;*.png;*.webp;*.avif;*.tif;*.tiff;*.bmp;*.mp4;*.mov;*.mkv;*.webm;*.avi;*.m4v;*.mpeg;*.mpg;*.mts;*.m2ts;*.wmv;*.gif|Все файлы|*.*"
+            Title = Loc.T("Добавить файлы в Vacpack"), Multiselect = true,
+            Filter = Loc.T("Фото, видео и GIF") + "|*.jpg;*.jpeg;*.png;*.webp;*.avif;*.tif;*.tiff;*.bmp;*.mp4;*.mov;*.mkv;*.webm;*.avi;*.m4v;*.mpeg;*.mpg;*.mts;*.m2ts;*.wmv;*.gif|" + Loc.T("Все файлы") + "|*.*"
         };
         if (dialog.ShowDialog(this) == true) AddPaths(dialog.FileNames);
     }
 
     private void ChooseFolder(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFolderDialog { Title = "Добавить папку с файлами" };
+        var dialog = new OpenFolderDialog { Title = Loc.T("Добавить папку с файлами") };
         if (dialog.ShowDialog(this) == true) AddPaths([dialog.FolderName]);
     }
 
     private void ChooseTools(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFolderDialog { Title = "Папка, в которой лежат ffmpeg.exe и ffprobe.exe" };
+        var dialog = new OpenFolderDialog { Title = Loc.T("Папка, в которой лежат ffmpeg.exe и ffprobe.exe") };
         if (dialog.ShowDialog(this) != true) return;
         var selected = new ToolLocator([dialog.FolderName]);
         if (selected.Find("ffmpeg") is null || selected.Find("ffprobe") is null)
         {
-            MessageBox.Show(this, "В папке должны находиться ffmpeg.exe и ffprobe.exe.", "Vacpack", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, Loc.T("В папке должны находиться ffmpeg.exe и ffprobe.exe."), "Vacpack", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         tools = selected;
@@ -122,7 +132,7 @@ public partial class MainWindow : Window
 
     private void ChooseOutput(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFolderDialog { Title = "Куда сохранить сжатые файлы" };
+        var dialog = new OpenFolderDialog { Title = Loc.T("Куда сохранить сжатые файлы") };
         if (dialog.ShowDialog(this) == true)
         {
             outputDirectory = dialog.FolderName;
@@ -133,15 +143,15 @@ public partial class MainWindow : Window
     }
     private void ResetOutput(object sender, RoutedEventArgs e)
     {
-        outputDirectory = null; OutputText.Text = "Рядом с исходником"; OutputText.ToolTip = null;
+        outputDirectory = null; OutputText.Text = Loc.T("Рядом с исходником"); OutputText.ToolTip = null;
         ResetOutputButton.Visibility = Visibility.Collapsed;
     }
     private void ClearFiles(object sender, RoutedEventArgs e)
     {
         foreach (var file in files) CancelThumbnail(file);
-        files.Clear(); thumbnails.ClearCache(); StatusText.Text = "Добавьте файлы для сжатия"; Refresh();
+        files.Clear(); thumbnails.ClearCache(); StatusText.Text = Loc.T("Добавьте файлы для сжатия"); Refresh();
     }
-    private void CancelJobs(object sender, RoutedEventArgs e) { cancellation?.Cancel(); CancelButton.IsEnabled = false; StatusText.Text = "Останавливаем обработку…"; }
+    private void CancelJobs(object sender, RoutedEventArgs e) { cancellation?.Cancel(); CancelButton.IsEnabled = false; StatusText.Text = Loc.T("Останавливаем обработку…"); }
     private async void StartCompression(object sender, RoutedEventArgs e)
     {
         if (cancellation is not null) return;
@@ -174,7 +184,7 @@ public partial class MainWindow : Window
                 if (source.IsCancellationRequested) break;
                 var file = jobs[index];
                 file.Start();
-                StatusText.Text = $"Файл {index + 1} из {jobs.Length}: {file.Name}";
+                StatusText.Text = Loc.T("Файл {0} из {1}: {2}", index + 1, jobs.Length, file.Name);
                 try
                 {
                     var progress = new Progress<double>(file.Report);
@@ -186,9 +196,9 @@ public partial class MainWindow : Window
                 RefreshSummary();
             }
             var errors = files.Count(file => file.Error is not null);
-            StatusText.Text = source.IsCancellationRequested ? "Обработка остановлена. Исходники сохранены."
-                : errors > 0 ? $"Обработка завершена. Ошибок: {errors}. Нажмите «Подробнее» в строке файла."
-                : "Готово. Можно изменить настройки и сжать снова.";
+            StatusText.Text = source.IsCancellationRequested ? Loc.T("Обработка остановлена. Исходники сохранены.")
+                : errors > 0 ? Loc.T("Обработка завершена. Ошибок: {0}. Нажмите «Подробнее» в строке файла.", errors)
+                : Loc.T("Готово. Можно изменить настройки и сжать снова.");
         }
         finally
         {
@@ -205,22 +215,23 @@ public partial class MainWindow : Window
         var busy = cancellation is not null;
         var ready = tools.Find("ffmpeg") is not null && tools.Find("ffprobe") is not null;
         ToolsBanner.Visibility = ready ? Visibility.Collapsed : Visibility.Visible;
-        ToolsText.Text = "Для сжатия нужны ffmpeg.exe и ffprobe.exe. Выберите папку с ними или поместите их в tools рядом с приложением.";
+        ToolsText.Text = Loc.T("Для сжатия нужны ffmpeg.exe и ffprobe.exe. Выберите папку с ними или поместите их в tools рядом с приложением.");
         CountText.Text = files.Count.ToString();
         EmptyState.Visibility = files.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         FileGrid.Visibility = files.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
         SettingsPanel.IsEnabled = !busy;
         OutputPanel.IsEnabled = !busy;
         FileActions.IsEnabled = !busy;
+        LanguageBox.IsEnabled = !busy;
         ClearButton.IsEnabled = !busy && files.Count > 0;
         foreach (var file in files) file.SetLocked(busy);
         var pending = files.Count(file => file.Ready);
-        CompressButton.Content = files.Count == 0 ? "Сжать файлы" : pending > 0 ? $"Сжать · {pending}" : "Сжать снова";
+        CompressButton.Content = files.Count == 0 ? Loc.T("Сжать файлы") : pending > 0 ? Loc.T("Сжать · {0}", pending) : Loc.T("Сжать снова");
         CompressButton.IsEnabled = !busy && ready && files.Count > 0;
         CompressButton.Visibility = busy ? Visibility.Collapsed : Visibility.Visible;
         CancelButton.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
         CancelButton.IsEnabled = busy;
-        QueueHint.Text = files.Count == 0 ? "Фото, видео и GIF" : $"Всего {FileItem.FormatBytes(files.Sum(file => file.InputBytes))} · исходники сохранятся";
+        QueueHint.Text = files.Count == 0 ? Loc.T("Фото, видео и GIF") : Loc.T("Всего {0} · исходники сохранятся", FileItem.FormatBytes(files.Sum(file => file.InputBytes)));
         RefreshContext();
         RefreshSummary();
     }
@@ -253,10 +264,10 @@ public partial class MainWindow : Window
         SpeechBox.Visibility = videos && audioOnly ? Visibility.Visible : Visibility.Collapsed;
         var pngOnly = images && !videos && !gifs && (ImageFormatBox.SelectedIndex == (int)ImageOutput.Png
             || ImageFormatBox.SelectedIndex == 0 && files.All(file => Path.GetExtension(file.Path).Equals(".png", StringComparison.OrdinalIgnoreCase)));
-        QualityHint.Text = pngOnly ? "PNG: сжатие без потерь, качество не меняется" : new[]
+        QualityHint.Text = pngOnly ? Loc.T("PNG: сжатие без потерь, качество не меняется") : new[]
         {
-            "Максимум деталей, больше размер", "Высокое качество с умеренным сжатием", "Баланс качества и размера",
-            "Меньше размер, заметнее сжатие", "Минимальный размер, меньше деталей"
+            Loc.T("Максимум деталей, больше размер"), Loc.T("Высокое качество с умеренным сжатием"), Loc.T("Баланс качества и размера"),
+            Loc.T("Меньше размер, заметнее сжатие"), Loc.T("Минимальный размер, меньше деталей")
         }[Math.Clamp(QualityBox.SelectedIndex, 0, 4)];
         QualityBox.IsEnabled = !pngOnly;
     }
@@ -265,8 +276,8 @@ public partial class MainWindow : Window
     {
         var saved = files.Sum(file => file.Result?.SavedBytes ?? 0);
         var originals = files.Where(file => file.Result is not null).Sum(file => file.Result!.InputBytes);
-        SummaryText.Text = originals == 0 ? "Исходники останутся на месте"
-            : $"Сэкономлено {FileItem.FormatBytes(saved)}  ·  {100.0 * saved / originals:0}%";
+        SummaryText.Text = originals == 0 ? Loc.T("Исходники останутся на месте")
+            : Loc.T("Сэкономлено {0}  ·  {1}%", FileItem.FormatBytes(saved), (100.0 * saved / originals).ToString("0"));
     }
 
     private void OnDragOver(object sender, DragEventArgs e)
@@ -347,7 +358,7 @@ public partial class MainWindow : Window
     private void OpenFolder(FileItem file)
     {
         var path = file.Result?.Output ?? file.Path;
-        if (!File.Exists(path)) { StatusText.Text = "Файл был перемещён или удалён."; return; }
+        if (!File.Exists(path)) { StatusText.Text = Loc.T("Файл был перемещён или удалён."); return; }
         try
         {
             var start = new ProcessStartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe")) { UseShellExecute = false };

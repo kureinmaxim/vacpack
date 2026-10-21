@@ -21,9 +21,9 @@ public sealed record CompressionSettings
     public void Validate()
     {
         if (!Enum.IsDefined(Quality) || !Enum.IsDefined(ImageOutput) || !Enum.IsDefined(VideoOutput))
-            throw new ArgumentException("Неизвестная настройка сжатия.");
+            throw new ArgumentException(Loc.T("Неизвестная настройка сжатия."));
         if (MaxLongEdge < 0 || MaxVideoFps < 0 || GifFps is < 1 or > 50)
-            throw new ArgumentException("Проверьте размеры и частоту кадров.");
+            throw new ArgumentException(Loc.T("Проверьте размеры и частоту кадров."));
     }
 }
 

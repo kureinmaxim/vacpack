@@ -34,7 +34,7 @@ public sealed class ProcessRunner
         await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
         await Task.WhenAll(stdout, stderr).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
-        if (deadline.IsCancellationRequested) throw new TimeoutException("Обработка заняла слишком много времени и остановлена.");
+        if (deadline.IsCancellationRequested) throw new TimeoutException(Loc.T("Обработка заняла слишком много времени и остановлена."));
         return new ProcessResult(process.ExitCode, await stdout, await stderr);
     }
 

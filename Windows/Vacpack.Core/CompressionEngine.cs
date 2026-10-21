@@ -34,7 +34,7 @@ public sealed class CompressionEngine(ToolLocator? tools = null, ProcessRunner? 
     {
         settings.Validate();
         input = Path.GetFullPath(input);
-        var kind = MediaFiles.Detect(input) ?? throw new NotSupportedException("Этот тип файла пока не поддерживается.");
+        var kind = MediaFiles.Detect(input) ?? throw new NotSupportedException(Loc.T("Этот тип файла пока не поддерживается."));
         var ffmpeg = tools.Require("ffmpeg");
         var ffprobe = tools.Require("ffprobe");
         var original = new FileInfo(input);
@@ -58,11 +58,11 @@ public sealed class CompressionEngine(ToolLocator? tools = null, ProcessRunner? 
             if (result.ExitCode != 0) throw new InvalidDataException("FFmpeg: " + ErrorTail(result.StandardError));
             cancellationToken.ThrowIfCancellationRequested();
             var outputBytes = new FileInfo(staged).Length;
-            if (outputBytes == 0) throw new InvalidDataException("Кодер создал пустой файл.");
+            if (outputBytes == 0) throw new InvalidDataException(Loc.T("Кодер создал пустой файл."));
             await VerifyAsync(ffprobe, staged, command, info, kind, cancellationToken).ConfigureAwait(false);
             original.Refresh();
             if (!original.Exists || original.Length != originalBytes || original.LastWriteTimeUtc != modified)
-                throw new IOException("Исходный файл изменился во время сжатия. Добавьте его заново.");
+                throw new IOException(Loc.T("Исходный файл изменился во время сжатия. Добавьте его заново."));
             if (outputBytes >= originalBytes)
             {
                 progress?.Report(1);
@@ -89,7 +89,7 @@ public sealed class CompressionEngine(ToolLocator? tools = null, ProcessRunner? 
     {
         var result = await runner.RunAsync(ffprobe, ["-v", "error", "-print_format", "json", "-show_format", "-show_streams", path],
             cancellationToken, TimeSpan.FromSeconds(60)).ConfigureAwait(false);
-        if (result.ExitCode != 0) throw new InvalidDataException("Не удалось прочитать файл: " + ErrorTail(result.StandardError));
+        if (result.ExitCode != 0) throw new InvalidDataException(Loc.T("Не удалось прочитать файл: ") + ErrorTail(result.StandardError));
         return result.StandardOutput;
     }
 
@@ -102,22 +102,22 @@ public sealed class CompressionEngine(ToolLocator? tools = null, ProcessRunner? 
             using var document = JsonDocument.Parse(json);
             if (!document.RootElement.GetProperty("streams").EnumerateArray().Any(stream =>
                     stream.TryGetProperty("codec_type", out var type) && type.GetString() == "audio"))
-                throw new InvalidDataException("В результате отсутствует звуковая дорожка.");
+                throw new InvalidDataException(Loc.T("В результате отсутствует звуковая дорожка."));
             var duration = document.RootElement.TryGetProperty("format", out var format)
                 && format.TryGetProperty("duration", out var durationValue)
                 && double.TryParse(durationValue.ToString(), CultureInfo.InvariantCulture, out var seconds) ? seconds : 0;
             var expectedDuration = source.AudioDuration ?? source.Duration;
             if (expectedDuration > 0 && duration < expectedDuration * .9)
-                throw new InvalidDataException("Звуковой файл короче исходного видео.");
+                throw new InvalidDataException(Loc.T("Звуковой файл короче исходного видео."));
             return;
         }
         var output = MediaInfo.Parse(json);
         if (output.Width != command.Width || output.Height != command.Height)
-            throw new InvalidDataException("Размер результата не совпадает с ожидаемым.");
+            throw new InvalidDataException(Loc.T("Размер результата не совпадает с ожидаемым."));
         if (kind != MediaKind.Image && source.Duration > 0 && Math.Abs(output.Duration - source.Duration) > Math.Max(.25, source.Duration * .02))
-            throw new InvalidDataException("Продолжительность результата отличается от исходного файла.");
+            throw new InvalidDataException(Loc.T("Продолжительность результата отличается от исходного файла."));
         if (source.HasAlpha && command.Extension is ".png" or ".webp" or ".gif" or ".webm" && !output.HasAlpha)
-            throw new InvalidDataException("Кодер не сохранил прозрачность.");
+            throw new InvalidDataException(Loc.T("Кодер не сохранил прозрачность."));
     }
 
     private static string ErrorTail(string text) => string.Join(Environment.NewLine,

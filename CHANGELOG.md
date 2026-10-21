@@ -4,6 +4,12 @@ Notable changes to Vacpack. The format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-21
+
+### Added
+
+- Windows: interface language, English (the default) or Russian, chosen in the window header and applied after a restart. The choice is kept in `%LOCALAPPDATA%\Vacpack\settings.json`.
+
 ## [0.4.1] - 2026-10-21
 
 ### Added

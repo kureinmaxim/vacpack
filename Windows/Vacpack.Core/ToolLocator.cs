@@ -13,7 +13,7 @@ public sealed class ToolLocator(IEnumerable<string>? directories = null)
     }
 
     public string Require(string name) => Find(name) ?? throw new FileNotFoundException(
-        $"Не найден {name}.exe. Поместите FFmpeg и ffprobe в папку tools рядом с приложением или добавьте их в PATH.");
+        Loc.T("Не найден {0}.exe. Поместите FFmpeg и ffprobe в папку tools рядом с приложением или добавьте их в PATH.", name));
 
     private static IEnumerable<string> DefaultDirectories()
     {

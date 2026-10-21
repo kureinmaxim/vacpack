@@ -14,10 +14,10 @@ public sealed record MediaInfo(int Width, int Height, double Duration, double Fp
         var streams = root.GetProperty("streams").EnumerateArray().ToArray();
         var video = streams.FirstOrDefault(stream => Text(stream, "codec_type") == "video"
             && (!stream.TryGetProperty("disposition", out var disposition) || Number(disposition, "attached_pic") != 1));
-        if (video.ValueKind == JsonValueKind.Undefined) throw new InvalidDataException("В файле нет изображения или видеодорожки.");
+        if (video.ValueKind == JsonValueKind.Undefined) throw new InvalidDataException(Loc.T("В файле нет изображения или видеодорожки."));
         var width = (int)Number(video, "width");
         var height = (int)Number(video, "height");
-        if (width <= 0 || height <= 0) throw new InvalidDataException("Не удалось определить размер изображения.");
+        if (width <= 0 || height <= 0) throw new InvalidDataException(Loc.T("Не удалось определить размер изображения."));
         var sar = Rate(Text(video, "sample_aspect_ratio"));
         if (sar > 0) width = Math.Max(1, (int)Math.Round(width * sar));
         if (video.TryGetProperty("side_data_list", out var sides))

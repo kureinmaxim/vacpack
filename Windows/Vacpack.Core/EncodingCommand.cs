@@ -36,7 +36,7 @@ public static class EncoderCommands
         if (even)
         {
             width -= width % 2; height -= height % 2;
-            if (width < 2 || height < 2) throw new InvalidDataException("Размер видео слишком мал для выбранного кодека.");
+            if (width < 2 || height < 2) throw new InvalidDataException(Loc.T("Размер видео слишком мал для выбранного кодека."));
         }
         return (width, height);
     }
@@ -48,10 +48,10 @@ public static class EncoderCommands
         var audioOnly = kind == MediaKind.Video && settings.VideoOutput is VideoOutput.M4a or VideoOutput.Mp3 or VideoOutput.Opus;
         var gif = extension == ".gif";
         if (info.IsHdr && kind == MediaKind.Video && !audioOnly)
-            throw new NotSupportedException("HDR-видео пока не поддерживается в Windows-версии: требуется отдельное преобразование цвета.");
-        if (info.Codec == "apng") throw new NotSupportedException("Анимированный PNG пока не поддерживается.");
+            throw new NotSupportedException(Loc.T("HDR-видео пока не поддерживается в Windows-версии: требуется отдельное преобразование цвета."));
+        if (info.Codec == "apng") throw new NotSupportedException(Loc.T("Анимированный PNG пока не поддерживается."));
         if (info.HasAlpha && kind == MediaKind.Video && !audioOnly && !gif && extension != ".webm")
-            throw new NotSupportedException("Для видео с прозрачностью выберите WebM.");
+            throw new NotSupportedException(Loc.T("Для видео с прозрачностью выберите WebM."));
         var (width, height) = TargetSize(info, settings.MaxLongEdge, kind == MediaKind.Video && !gif && !audioOnly);
         var q = (int)settings.Quality;
         var args = new List<string> { "-hide_banner", "-loglevel", "error", "-nostdin", "-n", "-progress", "pipe:1", "-nostats" };
@@ -59,7 +59,7 @@ public static class EncoderCommands
         args.AddRange(["-i", input]);
         if (audioOnly)
         {
-            if (info.AudioCodecs.Count == 0) throw new InvalidDataException("В видео нет звуковой дорожки.");
+            if (info.AudioCodecs.Count == 0) throw new InvalidDataException(Loc.T("В видео нет звуковой дорожки."));
             args.AddRange(["-map", "0:a:0", "-vn", "-map_metadata", "0"]);
             args.AddRange(extension switch
             {
@@ -99,10 +99,10 @@ public static class EncoderCommands
                     ".avif" => ["-c:v", "libaom-av1", "-still-picture", "1", "-crf", new[] { "18", "24", "30", "36", "42" }[q], "-cpu-used", "6"],
                     ".tif" or ".tiff" => ["-c:v", "tiff", "-compression_algo", "deflate"],
                     ".bmp" => ["-c:v", "bmp"],
-                    _ => throw new NotSupportedException("Этот формат изображения пока не поддерживается.")
+                    _ => throw new NotSupportedException(Loc.T("Этот формат изображения пока не поддерживается."))
                 });
                 if (info.HasAlpha && extension == ".avif")
-                    throw new NotSupportedException("Для изображения с прозрачностью выберите PNG или WebP.");
+                    throw new NotSupportedException(Loc.T("Для изображения с прозрачностью выберите PNG или WebP."));
                 if (extension != ".avif") args.AddRange(["-update", "1"]);
             }
             else
