@@ -23,10 +23,16 @@ Windows пока выпускается как предварительная в
 
 ## Windows: подготовка и разработка
 
-Для сборки нужны Windows 10/11 x64, [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0),
+Для сборки нужны Windows 10/11 x64, [PowerShell 7](https://github.com/PowerShell/PowerShell/releases) (`pwsh`),
+[.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0),
 FFmpeg с `ffmpeg.exe` и `ffprobe.exe`. Для установщика нужен [Inno Setup 6](https://jrsoftware.org/isdl.php),
 для проверки версии перед релизом — Python 3. Консольные проекты используют только
 SDK и системные библиотеки; UI — WPF. Версия читается из `project.yml`.
+
+Все примеры набираются в `pwsh`, а не во встроенном Windows PowerShell 5.1
+(`powershell.exe`). `windows.ps1` работает в обоих, но `release-windows.ps1`
+в 5.1 обрывается: тамошний `Compress-Archive` пишет имена записей в ZIP через
+обратный слеш, и проверка содержимого архива их не находит.
 
 ```powershell
 .\scripts\windows.ps1 -Mode run -ToolsDirectory 'C:\ffmpeg\bin'
@@ -71,6 +77,7 @@ FFmpeg и ffprobe устанавливаются отдельно. Устано�
 python scripts/update_version.py bump minor --release-date 19.10.2026
 python scripts/update_version.py status
 # Дописать CHANGELOG и закоммитить все исходники, включая миниатюры и тесты.
+# Только в PowerShell 7: в Windows PowerShell 5.1 релизный ZIP собирается неверно.
 .\scripts\release-windows.ps1 -ToolsDirectory 'C:\ffmpeg\bin'
 # При необходимости явно указать Python:
 # .\scripts\release-windows.ps1 -ToolsDirectory 'C:\ffmpeg\bin' -PythonExecutable 'C:\Python313\python.exe'
@@ -232,9 +239,14 @@ killall Dock
 
 **Сжатый файл не появился, в строке «would not get smaller — original kept»** — так и задумано: результат вышел не меньше исходника, и оригинал оставлен. Попробуйте уровень качества ниже или меньшее разрешение.
 
+**Windows: `Release archive is incomplete`** — релиз собирался во встроенном Windows PowerShell 5.1. Его `Compress-Archive` записывает имена в ZIP как `Vacpack\BUILD.json`, а проверка ищет `Vacpack/BUILD.json`. Запускайте `scripts/release-windows.ps1` в `pwsh`.
+
+**Windows: `Get-FileHash : The term 'Get-FileHash' is not recognized`** — `powershell.exe` 5.1 запущен из сессии `pwsh` и унаследовал её `PSModulePath`, поэтому грузит модули PowerShell 7 вместо своих, и часть команд пропадает. Лечится тем же — собирайте в `pwsh`. Проверить подмену: `Get-Module Microsoft.PowerShell.Utility | Format-List Name,Version,Path`.
+
 ## Правило
 
 Версию меняем только `scripts/update_version.py`. Для macOS установка собирается
 `scripts/package.sh`, проверки — `scripts/check.sh` (перед релизом с `--ui`). Для
 Windows проверяем `scripts/windows.ps1 -Mode check -RequireMediaTests`, установщик
 собираем через `-Mode installer`, полный релиз — `scripts/release-windows.ps1`.
+Windows-скрипты запускаем в PowerShell 7 (`pwsh`).

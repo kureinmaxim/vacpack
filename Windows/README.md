@@ -10,12 +10,13 @@ FFmpeg и ffprobe без shell. Все файлы обрабатываются �
 
 ## Запуск из исходников
 
-Нужны Windows 10/11, [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+Нужны Windows 10/11, [PowerShell 7](https://github.com/PowerShell/PowerShell/releases),
+[.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 и Windows-сборка [FFmpeg](https://ffmpeg.org/download.html#build-windows) с
 `ffmpeg.exe`, `ffprobe.exe` и кодеками libx264, libvpx-vp9, libwebp, libaom-av1,
 AAC, libmp3lame и libopus. HEIC и SVG в этом прототипе не принимаются.
 
-В PowerShell из корня репозитория:
+В PowerShell 7 (`pwsh`) из корня репозитория:
 
 ```powershell
 .\scripts\windows.ps1 -Mode run -ToolsDirectory 'C:\ffmpeg\bin'
@@ -148,6 +149,9 @@ FFmpeg устанавливается отдельно; бинарники ко�
 Скрипт проверяет версии и все тесты, собирает установщик и ZIP из одной новой
 staging-папки и создаёт SHA-256. Для текущей версии результат лежит в
 `.build/dist/v0.4.0-windows-preview.1/`. Нужны Python 3 и Inno Setup 6.
+Только `pwsh`: во встроенном Windows PowerShell 5.1 скрипт обрывается на
+`Release archive is incomplete` — тамошний `Compress-Archive` пишет имена
+записей в ZIP через обратный слеш.
 Подробный порядок — в [BUILD.md](../BUILD.md), заметки — в
 [описании Windows-релиза](../docs/releases/v0.4.0-windows-preview.1.md).
 
