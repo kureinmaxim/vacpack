@@ -1,0 +1,31 @@
+name: Windows build (preview)
+
+on:
+  push:
+    branches: [main]
+    paths: ["Windows/**", "project.yml", "scripts/windows.ps1", ".github/workflows/windows.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build and check
+        shell: pwsh
+        run: .\scripts\windows.ps1 -Mode check
+
+      - name: Publish (self-contained)
+        shell: pwsh
+        run: .\scripts\windows.ps1 -Mode package
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Vacpack-windows
+          path: .build/windows/Vacpack
+          if-no-files-found: error

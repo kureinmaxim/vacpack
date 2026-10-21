@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <_VacpackProject>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)../project.yml'))</_VacpackProject>
+    <Version>$([System.Text.RegularExpressions.Regex]::Match('$(_VacpackProject)', 'MARKETING_VERSION: &quot;([0-9.]+)&quot;').Groups[1].Value)</Version>
+    <InformationalVersion>$(Version)-windows-preview.1</InformationalVersion>
+    <Company>Vacpack</Company>
+    <Product>Vacpack</Product>
+    <Copyright>GPL-3.0</Copyright>
+  </PropertyGroup>
+</Project>

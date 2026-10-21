@@ -18,3 +18,10 @@ xcuserdata/
 
 # Python bytecode (scripts/update_version.py)
 __pycache__/
+
+# Windows / .NET build output and local encoder binaries
+Windows/**/bin/
+Windows/**/obj/
+Windows/**/tools/
+.vs/
+*.user

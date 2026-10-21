@@ -177,7 +177,9 @@ def apply(version: str, date: str, dry_run: bool) -> int:
         if dry_run:
             print(f"Would update {target.path}")
         else:
-            target.file.write_text(new, encoding="utf-8")
+            # Keep repository line endings stable when bumping a version on Windows too.
+            with target.file.open("w", encoding="utf-8", newline="\n") as output:
+                output.write(new)
             print(f"Updated {target.path}")
     if not changes:
         print("Everything is already in sync.")

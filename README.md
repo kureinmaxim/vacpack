@@ -1,8 +1,10 @@
 # Vacpack
 
-Vacpack is a native macOS app and command-line tool that makes images, videos and GIFs smaller, entirely offline. Like vacuum packing: everything the file does not need is pumped out.
+Vacpack makes images, videos and GIFs smaller, entirely offline. It has a native macOS app and CLI, and an experimental native Windows app. Like vacuum packing: everything the file does not need is pumped out.
 
-**Version:** `0.3.1`, released 18.10.2026 · [changelog](CHANGELOG.md) · [how versions are managed](VERSION_MANAGEMENT.md)
+**Windows preview:** a self-contained x64 installer and portable ZIP, with photo/video thumbnails, a cancellable queue and local image, video, GIF and audio processing. .NET is included; FFmpeg and ffprobe are installed separately. See [Windows/README.md](Windows/README.md) for installation and limitations, or the [Windows preview release](https://github.com/kureinmaxim/vacpack/releases/tag/v0.4.0-windows-preview.1).
+
+**Version:** `0.4.0`, released 19.10.2026 · [changelog](CHANGELOG.md) · [how versions are managed](VERSION_MANAGEMENT.md)
 
 <p align="center">
   <picture>
@@ -26,14 +28,20 @@ Vacpack is a native macOS app and command-line tool that makes images, videos an
 
 > **Status: early development.** Image, video and GIF compression work in the app and the CLI. PDF, EPUB, presets, the notch Drop Zone, folder monitoring and the rest are planned — see [the stage plan](docs/PLAN.md).
 
-## What works today
+## What works today on macOS
 
 - **Images** — JPEG, PNG, WebP, AVIF, HEIC/HEIF, TIFF, BMP and SVG in (DNG is supported but not yet tested); JPEG, PNG, WebP, AVIF or the same format out. Five quality levels, six resize modes (never upscaling), EXIF orientation applied, transparency kept (or flattened to white for JPEG). EXIF/IPTC/XMP, color profile, print resolution, file dates and Finder tags can be kept.
 - **Videos** — MP4, MOV, WebM, MKV and other containers in; MP4, MOV, WebM or the same container out, or just the sound as M4A, MP3 or Opus: a speech profile (mono, even loudness, about 29 MB an hour) makes podcasts and voice files for Telegram, Delta Chat and other messengers, with a frame from the video as cover art; share a finished file from the window. H.264 or HEVC with x264/x265 (VideoToolbox optional on Apple Silicon), VP9 + Opus for WebM, output bitrate capped below the source's so already-compressed videos still shrink, transparency kept in WebM and MOV, every audio track kept, resolution presets and frame-rate caps that only ever go down. Falls back to software encoding when the media engine is busy.
 - **GIFs** — compress animated GIFs or turn videos into GIFs with gifski: quality, size and frame rate (10–50 fps), transparency and frame timing preserved.
 - **Safe by default** — a result that is not smaller never replaces the original, originals go to the Trash only after success, and nothing ever leaves your Mac.
 
-## Requirements
+## Windows
+
+Download the installer or ZIP from the [Windows preview release](https://github.com/kureinmaxim/vacpack/releases/tag/v0.4.0-windows-preview.1). Both include the .NET runtime. Install [FFmpeg for Windows](https://ffmpeg.org/download.html#build-windows) separately; the app lets you choose its `bin` directory. Windows currently supports a subset of the macOS features; see [the Windows guide](Windows/README.md).
+
+![Vacpack on Windows with photo, video and GIF thumbnails](docs/images/window-windows.png)
+
+## Requirements for macOS
 
 - macOS 14 or later, Xcode 26 (after installing or updating Xcode, run `sudo xcodebuild -runFirstLaunch` once)
 - Tools from Homebrew:

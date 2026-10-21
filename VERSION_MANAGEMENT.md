@@ -21,6 +21,11 @@ settings:
 
 Xcode берёт `MARKETING_VERSION` напрямую: из него `CFBundleShortVersionString` в Info.plist.
 
+Windows берёт эту же версию при сборке через `Windows/Directory.Build.props`:
+отдельно менять `.csproj` или скрипт Inno Setup не нужно. Предварительный тег может
+иметь суффикс, например `v0.4.0-windows-preview.1`, при числовой версии `0.4.0` в
+`project.yml`. Такой релиз отмечается как pre-release, пока Windows экспериментальна.
+
 ## Команды
 
 `scripts/update_version.py` использует только стандартную библиотеку Python; виртуальное окружение не нужно.
@@ -80,6 +85,19 @@ Updated CHANGELOG.md
    ```
 4. Коммит и push в `main`.
 5. Собрать DMG: `scripts/package.sh`. Он откажется собирать, если `status` не `OK`, и назовёт файл `Vacpack-X.Y.Z.dmg`.
+
+### Windows
+
+После `bump` и заметок выполните `scripts/windows.ps1 -Mode check -RequireMediaTests`,
+включите в коммит все исходники и тесты, затем запустите `scripts/release-windows.ps1`.
+Он требует чистого Git и согласованных версий, собирает в новой staging-папке
+установщик и ZIP со встроенной .NET и формирует `SHA256SUMS.txt`.
+`BUILD.json` содержит коммит, runtime и `sourceDirty: false`.
+
+Тег `vX.Y.Z-windows-preview.N` должен указывать на этот же коммит в обоих
+репозиториях. Публикуется один набор файлов на GitHub и Forgejo с признаком
+pre-release; стабильный macOS-релиз и `main` остаются самостоятельными.
+Нельзя публиковать установщик из грязной рабочей копии, даже если `X.Y.Z` совпадает.
 
 ## Если что-то не так
 

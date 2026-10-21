@@ -1,6 +1,8 @@
 # BUILD — сборка Vacpack
 
-Как собрать Vacpack из исходников: приложение для разработки, команду `vacpack`, тесты и DMG для установки.
+Как собрать Vacpack из исходников: приложения для Windows и macOS, CLI, тесты, установщик, ZIP и DMG.
+
+Windows пока выпускается как предварительная версия (каталог `Windows/`). Возможности и отличия — в [Windows/README.md](Windows/README.md). Сначала описана Windows-сборка, затем прежний порядок для macOS.
 
 Связано: [README.md](README.md) · [VERSION_MANAGEMENT.md](VERSION_MANAGEMENT.md) · [CHANGELOG.md](CHANGELOG.md) · [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
@@ -12,10 +14,83 @@
 | Приложение Release (универсальное: Apple Silicon и Intel) | `scripts/package.sh` | `.build/release/Build/Products/Release/Vacpack.app` |
 | DMG для установки | `scripts/package.sh` | `.build/dist/Vacpack-X.Y.Z.dmg` |
 | Команда `vacpack` | `swift build` | `Packages/CompressorKit/.build/{debug,release}/vacpack` |
+| Windows Debug | `scripts/windows.ps1 -Mode check` | `Windows/Vacpack.Windows/bin/Debug/net8.0-windows/Vacpack.exe` |
+| Windows x64, со встроенной .NET | `scripts/windows.ps1 -Mode package` | `.build/windows/Vacpack/Vacpack.exe` и соседние файлы |
+| Установщик Windows | `scripts/windows.ps1 -Mode installer` | `.build/windows/Vacpack-Setup-X.Y.Z.exe` |
+| Windows-релиз: установщик, ZIP, SHA-256 | `scripts/release-windows.ps1` | `.build/dist/vX.Y.Z-windows-preview.1/` |
 
 Всё собранное лежит в `.build/` и в git не попадает. Проект Xcode `Vacpack.xcodeproj` тоже не коммитится: его генерирует XcodeGen из `project.yml`.
 
-## Требования
+## Windows: подготовка и разработка
+
+Для сборки нужны Windows 10/11 x64, [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0),
+FFmpeg с `ffmpeg.exe` и `ffprobe.exe`. Для установщика нужен [Inno Setup 6](https://jrsoftware.org/isdl.php),
+для проверки версии перед релизом — Python 3. Консольные проекты используют только
+SDK и системные библиотеки; UI — WPF. Версия читается из `project.yml`.
+
+```powershell
+.\scripts\windows.ps1 -Mode run -ToolsDirectory 'C:\ffmpeg\bin'
+.\scripts\windows.ps1 -Mode check -ToolsDirectory 'C:\ffmpeg\bin' -RequireMediaTests
+```
+
+`check` собирает WPF, запускает 27 проверок движка, 8 проверок миниатюр и снимок
+окна с заполненной очередью. Проверяются фото/GIF, кадр короткого видео, EXIF-поворот,
+кэш, отсутствие блокировки исходника и отказ миниатюры без отказа сжатия.
+Для снимка нужен рабочий стол Windows. Без `-RequireMediaTests` и без FFmpeg
+проверки внешних кодеров явно пропускаются; перед релизом пропуск запрещён.
+
+Миниатюры загружаются в фоне двумя работниками, до 160 px по длинной стороне.
+Фото читаются WPF, видео и неподдерживаемые системным декодером форматы — FFmpeg.
+В памяти хранится не больше 128 записей кэша сервиса; временные PNG удаляются.
+При недоступном/повреждённом файле остаётся значок его типа.
+
+## Windows: папка и установщик
+
+```powershell
+.\scripts\windows.ps1 -Mode package
+.\scripts\windows.ps1 -Mode installer
+# Если прежний EXE запущен, публикуйте в другую папку:
+.\scripts\windows.ps1 -Mode package -DestinationDirectory .build\windows\Vacpack-preview
+```
+
+Оба варианта self-contained, `win-x64`: .NET входит в поставку. Пакет runtime
+закреплён в `scripts/windows.ps1` (`8.0.32`), для его первого получения нужен
+nuget.org из `Windows/NuGet.Publish.Config`. `check` и `run` используют локальные
+SDK reference packs и `Windows/NuGet.Config` без внешних источников.
+FFmpeg и ffprobe устанавливаются отдельно. Установщик не подписан, ставит приложение
+в профиль пользователя и включает деинсталлятор. Самопроверки не устанавливают его
+в пользовательский профиль автоматически.
+
+В опубликованной папке есть `BUILD.json`: версия, коммит, признак незакоммиченных
+изменений и runtime. Обычная разработческая сборка может иметь `sourceDirty: true`;
+релизная — только `false`.
+
+## Windows: подготовка релиза
+
+```powershell
+python scripts/update_version.py bump minor --release-date 19.10.2026
+python scripts/update_version.py status
+# Дописать CHANGELOG и закоммитить все исходники, включая миниатюры и тесты.
+.\scripts\release-windows.ps1 -ToolsDirectory 'C:\ffmpeg\bin'
+# При необходимости явно указать Python:
+# .\scripts\release-windows.ps1 -ToolsDirectory 'C:\ffmpeg\bin' -PythonExecutable 'C:\Python313\python.exe'
+```
+
+Для текущего предварительного релиза версия — `0.4.0`, тег — `v0.4.0-windows-preview.1`.
+Не запускайте `bump` повторно, если версия уже подготовлена. Полный порядок и текст
+релиза — в [docs/releases/v0.4.0-windows-preview.1.md](docs/releases/v0.4.0-windows-preview.1.md).
+
+`release-windows.ps1` отказывается работать с грязным Git, сверяет версии, выполняет
+все проверки, создаёт новую staging-папку, собирает установщик и ZIP из одной папки
+приложения и пишет `SHA256SUMS.txt`. `BUILD.json` должен указывать на зафиксированный
+коммит и `sourceDirty: false`. Это исключает выпуск установщика с изменениями,
+которых нет в соответствующем теге.
+
+Публикуйте этот же тег и эти же три файла на GitHub и Forgejo с признаком
+**pre-release**, без изменения `main` и без замены стабильного `v0.3.1`.
+Из этого Windows-релиза DMG не собирается; изменения macOS требуют проверки на Mac.
+
+## macOS: требования
 
 - **macOS 14** или новее — чтобы запускать приложение. Собирать — на **Xcode 26** (проверено: Xcode 26.5, Swift 6.3, macOS 26.6). Форматтер `swift format` входит в Xcode.
 - **Утилиты из Homebrew** — XcodeGen для проекта и программы, которые запускают движки:
@@ -159,4 +234,7 @@ killall Dock
 
 ## Правило
 
-Сборку для установки делаем только `scripts/package.sh`, версию меняем только `scripts/update_version.py`. Перед коммитом — `scripts/check.sh` (перед релизом — с `--ui`).
+Версию меняем только `scripts/update_version.py`. Для macOS установка собирается
+`scripts/package.sh`, проверки — `scripts/check.sh` (перед релизом с `--ui`). Для
+Windows проверяем `scripts/windows.ps1 -Mode check -RequireMediaTests`, установщик
+собираем через `-Mode installer`, полный релиз — `scripts/release-windows.ps1`.
