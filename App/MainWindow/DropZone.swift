@@ -16,7 +16,7 @@ struct DropZone: View {
                 .scaleEffect(isTargeted ? 1.08 : 1)
                 .accessibilityHidden(true)
             VStack(spacing: 6) {
-                Text(isTargeted ? "Drop to add" : "Drop images, videos or folders here")
+                Text(title)
                     .font(.title.weight(.semibold))
                 Text("Compressed right on this Mac. A file that would not get smaller keeps its original.")
                     .foregroundStyle(.secondary)
@@ -46,6 +46,10 @@ struct DropZone: View {
         .contentShape(Rectangle())
     }
 
+    private var title: LocalizedStringKey {
+        isTargeted ? "Drop to add" : "Drop images, videos or folders here"
+    }
+
     /// A dashed frame in the icon's gradient that lights up while files hover over the window.
     private var frame: some View {
         let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
@@ -65,7 +69,7 @@ struct DropZone: View {
 /// A file kind with its badge and a few of its formats.
 private struct KindChip: View {
     let kind: FileKind
-    let formats: String
+    let formats: LocalizedStringKey
 
     var body: some View {
         HStack(spacing: 9) {

@@ -81,10 +81,11 @@ private struct FileRow: View {
                 text += "  ·  \(result.output.pathExtension.uppercased())"
             }
             return text
-        case .done(.keptOriginal): return "\(input)  ·  would not get smaller — original kept, no new file"
-        case .done(.unsupported): return "Not supported yet"
+        case .done(.keptOriginal):
+            return String(localized: "\(input)  ·  would not get smaller — original kept, no new file")
+        case .done(.unsupported): return String(localized: "Not supported yet")
         case .done(.failed(_, let message)): return message
-        case .done(.cancelled): return "\(input)  ·  cancelled"
+        case .done(.cancelled): return String(localized: "\(input)  ·  cancelled")
         }
     }
 

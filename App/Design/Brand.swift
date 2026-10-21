@@ -64,7 +64,7 @@ extension FileKind {
         }
     }
 
-    var title: String {
+    var title: LocalizedStringKey {
         switch self {
         case .image: "Images"
         case .video: "Videos"
@@ -112,7 +112,7 @@ struct BrandButtonStyle: ButtonStyle {
 
 /// A small colored capsule for a file's state.
 struct StatusPill: View {
-    let text: String
+    let text: LocalizedStringKey
     let symbol: String
     let color: Color
 

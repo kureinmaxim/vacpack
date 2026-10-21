@@ -42,3 +42,7 @@ Run in PowerShell from the repo root (needs .NET 8 SDK and a Windows FFmpeg buil
 ## Versioning
 
 The single source of truth is `project.yml` (`MARKETING_VERSION`, `VACPACK_RELEASE_DATE`). Windows reads it at build time via `Windows/Directory.Build.props`. Change versions only with `python3 scripts/update_version.py status|bump patch|minor|major|sync X.Y.Z` (supports `--dry-run`), which keeps README, CHANGELOG, Info.plist etc. in agreement; `check.sh` fails if they drift. Windows preview tags may carry a suffix (`v0.4.0-windows-preview.1`).
+
+## Interface language
+
+English is the default on both platforms regardless of the system language; Russian is picked in the app and applied after a restart. **macOS:** strings are in `App/Resources/Localizable.xcstrings` (English is the key, Russian the translation, all entries `manual`); SwiftUI literals localize themselves, but a `String`-typed value needs `String(localized:)` or `LocalizedStringKey`. `InterfaceLanguage` in `VacpackApp.swift` writes `AppleLanguages` at launch. **Windows:** `Windows/Vacpack.Core/Loc.cs` maps the Russian text (the key) to English; use `Loc.T("…")` in C# and `{l:T '…'}` in XAML, and add every new string to that table. `VACPACK_LANG=ru|en` overrides the saved choice (tests, snapshots).

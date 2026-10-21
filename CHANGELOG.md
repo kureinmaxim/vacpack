@@ -8,6 +8,7 @@ Notable changes to Vacpack. The format follows [Keep a Changelog](https://keepac
 
 ### Added
 
+- macOS: interface language, English (the default) or Russian, chosen in the app menu under Language and applied after a restart. Strings live in `App/Resources/Localizable.xcstrings`.
 - Windows: interface language, English (the default) or Russian, chosen in the window header and applied after a restart. The choice is kept in `%LOCALAPPDATA%\Vacpack\settings.json`.
 
 ## [0.4.1] - 2026-10-21

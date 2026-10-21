@@ -166,7 +166,7 @@ private struct ImageOptionsRow: View {
         HStack(spacing: 14) {
             KindLabel(kind: .image)
             Picker("Quality", selection: $model.imageSettings.quality) {
-                ForEach(QualityLevel.allCases, id: \.self) { Text($0.label).tag($0) }
+                ForEach(QualityLevel.allCases, id: \.self) { Text(LocalizedStringKey($0.label)).tag($0) }
             }
             .fixedSize()
             Picker("Format", selection: $model.imageSettings.format) {
@@ -179,7 +179,7 @@ private struct ImageOptionsRow: View {
             .fixedSize()
             Picker("Size", selection: $limit) {
                 Text("Same size").tag(SizeLimit?.none)
-                ForEach(SizeLimit.allCases) { Text($0.rawValue).tag(SizeLimit?.some($0)) }
+                ForEach(SizeLimit.allCases) { Text(LocalizedStringKey($0.rawValue)).tag(SizeLimit?.some($0)) }
             }
             .fixedSize()
             if let limit {
@@ -246,7 +246,7 @@ private struct VideoOptionsRow: View {
             // Sound-only output ignores the video quality and resolution.
             if !model.videoSettings.format.isAudio {
                 Picker("Quality", selection: $model.videoSettings.quality) {
-                    ForEach(QualityLevel.allCases, id: \.self) { Text($0.label).tag($0) }
+                    ForEach(QualityLevel.allCases, id: \.self) { Text(LocalizedStringKey($0.label)).tag($0) }
                 }
                 .fixedSize()
             }
@@ -264,7 +264,7 @@ private struct VideoOptionsRow: View {
             .fixedSize()
             if !model.videoSettings.format.isAudio {
                 Picker("Resolution", selection: $resolution) {
-                    ForEach(Resolution.allCases) { Text($0.rawValue).tag($0) }
+                    ForEach(Resolution.allCases) { Text(LocalizedStringKey($0.rawValue)).tag($0) }
                 }
                 .fixedSize()
             }
@@ -309,16 +309,16 @@ private struct VideoOptionsRow: View {
         let players: String
         switch model.videoSettings.format {
         case .opus:
-            size = speech ? "about 14 MB an hour" : "about 58 MB an hour"
-            players = "Telegram, Android and desktops; iPhone apps may not play it"
+            size = speech ? String(localized: "about 14 MB an hour") : String(localized: "about 58 MB an hour")
+            players = String(localized: "Telegram, Android and desktops; iPhone apps may not play it")
         case .mp3:
-            size = speech ? "about 29 MB an hour" : "about 110 MB an hour"
-            players = "plays everywhere"
+            size = speech ? String(localized: "about 29 MB an hour") : String(localized: "about 110 MB an hour")
+            players = String(localized: "plays everywhere")
         default:
-            size = speech ? "about 29 MB an hour" : "about 86 MB an hour"
-            players = "plays everywhere, iPhone included: Telegram, Delta Chat, podcasts"
+            size = speech ? String(localized: "about 29 MB an hour") : String(localized: "about 86 MB an hour")
+            players = String(localized: "plays everywhere, iPhone included: Telegram, Delta Chat, podcasts")
         }
-        return (speech ? "Mono, even loudness · " : "") + "\(size) · \(players)"
+        return (speech ? String(localized: "Mono, even loudness") + " · " : "") + "\(size) · \(players)"
     }
 }
 
@@ -328,7 +328,7 @@ private struct GIFOptionsRow: View {
     enum Size: Hashable, Identifiable {
         case same, p75, p50, p25, percentage, maxWidth
         var id: Self { self }
-        var title: String {
+        var title: LocalizedStringKey {
             switch self {
             case .same: "Same as input"
             case .p75: "75%"
@@ -347,7 +347,7 @@ private struct GIFOptionsRow: View {
         HStack(spacing: 14) {
             KindLabel(kind: .gif)
             Picker("Quality", selection: $model.gifSettings.quality) {
-                ForEach(QualityLevel.allCases, id: \.self) { Text($0.label).tag($0) }
+                ForEach(QualityLevel.allCases, id: \.self) { Text(LocalizedStringKey($0.label)).tag($0) }
             }
             .fixedSize()
             Picker("Size", selection: $size) {

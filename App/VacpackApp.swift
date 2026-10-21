@@ -5,6 +5,7 @@ import SwiftUI
 @main
 struct VacpackApp: App {
     init() {
+        InterfaceLanguage.apply()
         #if DEBUG
             WindowSnapshot.applyAppearance()
         #endif
@@ -18,6 +19,17 @@ struct VacpackApp: App {
         .commands {
             CommandGroup(replacing: .appInfo) {
                 Button("About Vacpack") { showAboutPanel() }
+            }
+            CommandGroup(after: .appInfo) {
+                Menu("Language") {
+                    ForEach(InterfaceLanguage.allCases, id: \.self) { language in
+                        Toggle(
+                            language.title,
+                            isOn: Binding(
+                                get: { InterfaceLanguage.current == language },
+                                set: { _ in InterfaceLanguage.choose(language) }))
+                    }
+                }
             }
             CommandGroup(replacing: .help) {
                 Button("Vacpack on GitHub") { NSWorkspace.shared.open(ProjectLinks.repository) }
@@ -65,14 +77,52 @@ enum ProjectLinks {
             if let link { attributes[.link] = link }
             text.append(NSAttributedString(string: string, attributes: attributes))
         }
-        add("Project: ")
+        add(String(localized: "Project: "))
         add("github.com/kureinmaxim/vacpack", link: repository)
-        add("\nAuthor: ")
+        add("\n" + String(localized: "Author: "))
         add("github.com/kureinmaxim", link: author)
         if let source, !source.isEmpty {
-            add("\nCommit \(source)" + (sourceDate.map { $0.isEmpty ? "" : ", \($0)" } ?? ""))
+            add("\n" + String(localized: "Commit \(source)") + (sourceDate.map { $0.isEmpty ? "" : ", \($0)" } ?? ""))
         }
-        add("\nFree software under the GNU GPL v3")
+        add("\n" + String(localized: "Free software under the GNU GPL v3"))
         return text
+    }
+}
+
+/// The interface language: English unless the user picks Russian. macOS reads `AppleLanguages` once
+/// per launch, so a change takes effect after a restart.
+enum InterfaceLanguage: String, CaseIterable {
+    case english = "en"
+    case russian = "ru"
+
+    private static let key = "VacpackLanguage"
+
+    /// Each language in its own tongue, so it can be found whatever the current one is.
+    var title: String { self == .english ? "English" : "Русский" }
+
+    static var current: InterfaceLanguage {
+        UserDefaults.standard.string(forKey: key).flatMap(InterfaceLanguage.init) ?? .english
+    }
+
+    /// Call before the first window: the bundle then looks strings up in the chosen language,
+    /// whatever the system language is.
+    static func apply() {
+        UserDefaults.standard.set([current.rawValue], forKey: "AppleLanguages")
+    }
+
+    @MainActor static func choose(_ language: InterfaceLanguage) {
+        guard language != current else { return }
+        UserDefaults.standard.set(language.rawValue, forKey: key)
+        UserDefaults.standard.set([language.rawValue], forKey: "AppleLanguages")
+        let alert = NSAlert()
+        alert.messageText = String(localized: "Restart Vacpack to change the language?")
+        alert.addButton(withTitle: String(localized: "Restart"))
+        alert.addButton(withTitle: String(localized: "Later"))
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration) { _, _ in
+            Task { @MainActor in NSApp.terminate(nil) }
+        }
     }
 }
