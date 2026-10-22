@@ -2,7 +2,7 @@
 
 Vacpack makes images, videos and GIFs smaller, entirely offline. It has a native macOS app and CLI, and an experimental native Windows app. Like vacuum packing: everything the file does not need is pumped out.
 
-**Windows preview:** a self-contained x64 installer and portable ZIP, with photo/video thumbnails, a cancellable queue and local image, video, GIF and audio processing. .NET is included; FFmpeg and ffprobe are installed separately. See [Windows/README.md](Windows/README.md) for installation and limitations, or the [Windows preview release](https://github.com/kureinmaxim/vacpack/releases/tag/v0.4.0-windows-preview.1).
+**Windows preview:** a self-contained x64 installer and portable ZIP, with photo/video thumbnails, a cancellable queue and local image, video, GIF and audio processing. .NET is included; FFmpeg and ffprobe are installed separately. The interface is English by default, with Russian as a choice. See [Windows/README.md](Windows/README.md) for installation and limitations, or the [0.5.1 release](https://github.com/kureinmaxim/vacpack/releases/tag/v0.5.1).
 
 **Version:** `0.5.1`, released 21.10.2026 · [changelog](CHANGELOG.md) · [how versions are managed](VERSION_MANAGEMENT.md)
 
@@ -37,9 +37,9 @@ Vacpack makes images, videos and GIFs smaller, entirely offline. It has a native
 
 ## Windows
 
-Download the installer or ZIP from the [Windows preview release](https://github.com/kureinmaxim/vacpack/releases/tag/v0.4.0-windows-preview.1). Both include the .NET runtime. Install [FFmpeg for Windows](https://ffmpeg.org/download.html#build-windows) separately; the app lets you choose its `bin` directory. Windows currently supports a subset of the macOS features; see [the Windows guide](Windows/README.md).
+Download the installer or ZIP from the [0.5.1 release](https://github.com/kureinmaxim/vacpack/releases/tag/v0.5.1). Both include the .NET runtime. Install [FFmpeg for Windows](https://ffmpeg.org/download.html#build-windows) separately; the app lets you choose its `bin` directory. Windows currently supports a subset of the macOS features; see [the Windows guide](Windows/README.md).
 
-![Vacpack on Windows with photo, video and GIF thumbnails](docs/images/window-windows.png)
+![Vacpack 0.5.1 on Windows, in English: a photo, a video and a GIF with thumbnails and savings, and a language choice in the header](docs/images/window-windows.png)
 
 ## Requirements for macOS
 
