@@ -278,10 +278,14 @@ private struct VideoOptionsRow: View {
                 .fixedSize()
             Toggle("Keep transparency", isOn: $model.videoSettings.preserveTransparency)
                 .fixedSize()
-                .help("MOV keeps the alpha channel with HEVC; WebM always keeps it")
+                .checkboxTip(
+                    "Keep a transparent background when the video has one. MOV stores it with HEVC on Apple Silicon. WebM always keeps it. MP4 cannot."
+                )
             Toggle("Hardware encoding", isOn: $model.videoEncoding.hardwareAcceleration)
                 .fixedSize()
-                .help("VideoToolbox: can be faster on 4K, but visibly lower quality at the same size")
+                .checkboxTip(
+                    "Use the Mac's media chip. Often faster on 4K, but the picture looks worse at the same file size."
+                )
             Spacer()
         }
     }
@@ -381,6 +385,71 @@ private struct GIFOptionsRow: View {
             case .percentage: .percentage(min(100, n))
             case .maxWidth: .maxWidth(n)
             }
+    }
+}
+
+/// `.help` on a macOS checkbox never appears: SwiftUI puts the tip on a view the pointer does not hit.
+/// This sets it on the checkbox button under the control.
+private extension View {
+    func checkboxTip(_ text: String.LocalizationValue) -> some View {
+        background(CheckboxTip(text: String(localized: text)))
+    }
+}
+
+private struct CheckboxTip: NSViewRepresentable {
+    var text: String
+
+    func makeNSView(context: Context) -> NSView {
+        let view = Anchor()
+        view.text = text
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        (nsView as? Anchor)?.text = text
+    }
+
+    final class Anchor: NSView {
+        var text = "" {
+            didSet { install() }
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            install()
+            DispatchQueue.main.async { [weak self] in self?.install() }
+        }
+
+        override func layout() {
+            super.layout()
+            install()
+        }
+
+        private func install() {
+            guard let window, !text.isEmpty else { return }
+            let center = convert(CGPoint(x: bounds.midX, y: bounds.midY), to: nil)
+            let content = window.contentView
+            let hit = content?.hitTest(content?.convert(center, from: nil) ?? center)
+            guard let button = checkbox(from: hit, containing: center) ?? checkbox(from: superview, containing: center)
+            else { return }
+            if button.toolTip != text { button.toolTip = text }
+        }
+
+        /// The checkbox is an `NSButton` under the pointer. Only that one gets the tip.
+        private func checkbox(from start: NSView?, containing windowPoint: CGPoint) -> NSButton? {
+            var current = start
+            for _ in 0..<8 {
+                guard let view = current else { return nil }
+                let buttons = ([view] + view.subviews).compactMap { $0 as? NSButton }
+                if let button = buttons.first(where: { covers($0, windowPoint) }) { return button }
+                current = view.superview
+            }
+            return nil
+        }
+
+        private func covers(_ button: NSButton, _ windowPoint: CGPoint) -> Bool {
+            button.convert(button.bounds, to: nil).insetBy(dx: -4, dy: -4).contains(windowPoint)
+        }
     }
 }
 

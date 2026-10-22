@@ -82,7 +82,7 @@ private struct FileRow: View {
             }
             return text
         case .done(.keptOriginal):
-            return String(localized: "\(input)  ·  would not get smaller — original kept, no new file")
+            return String(localized: "\(input)  ·  not smaller, so no new file")
         case .done(.unsupported): return String(localized: "Not supported yet")
         case .done(.failed(_, let message)): return message
         case .done(.cancelled): return String(localized: "\(input)  ·  cancelled")
@@ -122,7 +122,9 @@ private struct FileRow: View {
                 .buttonStyle(.borderless)
                 .help("Show in Finder")
             }
-        case .done(.keptOriginal): StatusPill(text: "Original kept", symbol: "checkmark.circle", color: .secondary)
+        case .done(.keptOriginal):
+            StatusPill(text: "Not smaller", symbol: "checkmark.circle", color: .secondary)
+                .help("The compressed copy was not smaller, so the original stays and no new file was saved")
         case .done(.unsupported): StatusPill(text: "Not supported", symbol: "nosign", color: .secondary)
         case .done(.failed): StatusPill(text: "Failed", symbol: "xmark.octagon", color: .red)
         case .done(.cancelled): StatusPill(text: "Cancelled", symbol: "minus.circle", color: .secondary)

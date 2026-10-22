@@ -12,13 +12,13 @@
         }
       }
     },
-    "%@  ·  would not get smaller — original kept, no new file": {
+    "%@  ·  not smaller, so no new file": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@  ·  не станет меньше — оригинал сохранён, нового файла нет"
+            "value": "%@  ·  меньше не вышло, нового файла нет"
           }
         }
       }
@@ -287,6 +287,17 @@
         }
       }
     },
+    "Keep a transparent background when the video has one. MOV stores it with HEVC on Apple Silicon. WebM always keeps it. MP4 cannot.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранить прозрачный фон, если он есть у видео. MOV хранит его в HEVC на Apple Silicon. WebM сохраняет всегда. MP4 не умеет."
+          }
+        }
+      }
+    },
     "Keep transparency": {
       "extractionState": "manual",
       "localizations": {
@@ -327,17 +338,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "M4A (звук)"
-          }
-        }
-      }
-    },
-    "MOV keeps the alpha channel with HEVC; WebM always keeps it": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MOV сохраняет альфа-канал с HEVC; WebM сохраняет его всегда"
           }
         }
       }
@@ -452,6 +452,17 @@
         }
       }
     },
+    "Not smaller": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не уменьшился"
+          }
+        }
+      }
+    },
     "Not supported": {
       "extractionState": "manual",
       "localizations": {
@@ -503,17 +514,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Opus (звук)"
-          }
-        }
-      }
-    },
-    "Original kept": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Оригинал сохранён"
           }
         }
       }
@@ -771,6 +771,17 @@
         }
       }
     },
+    "The compressed copy was not smaller, so the original stays and no new file was saved": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сжатая копия не меньше оригинала, поэтому оригинал остаётся и новый файл не сохранён"
+          }
+        }
+      }
+    },
     "Vacpack on GitHub": {
       "extractionState": "manual",
       "localizations": {
@@ -793,13 +804,13 @@
         }
       }
     },
-    "VideoToolbox: can be faster on 4K, but visibly lower quality at the same size": {
+    "Use the Mac's media chip. Often faster on 4K, but the picture looks worse at the same file size.": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "VideoToolbox: на 4K может быть быстрее, но при том же размере качество заметно ниже"
+            "value": "Кодировать чипом Mac. На 4K часто быстрее, но при том же размере картинка заметно хуже."
           }
         }
       }

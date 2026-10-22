@@ -237,7 +237,7 @@ touch /Applications/Vacpack.app
 killall Dock
 ```
 
-**macOS: сжатый файл не появился, в строке «would not get smaller — original kept»** — так и задумано: результат вышел не меньше исходника, и оригинал оставлен. Попробуйте уровень качества ниже или меньшее разрешение.
+**macOS: сжатый файл не появился, в строке «not smaller, so no new file»** — так и задумано: результат вышел не меньше исходника, и оригинал оставлен. Попробуйте уровень качества ниже или меньшее разрешение.
 
 **Windows: `Release archive is incomplete`** — релиз собирался во встроенном Windows PowerShell 5.1. Его `Compress-Archive` записывает имена в ZIP как `Vacpack\BUILD.json`, а проверка ищет `Vacpack/BUILD.json`. Запускайте `scripts/release-windows.ps1` в `pwsh`.
 

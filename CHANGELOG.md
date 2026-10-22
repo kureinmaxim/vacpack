@@ -4,6 +4,13 @@ Notable changes to Vacpack. The format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-10-22
+
+### Changed
+
+- macOS: “Keep transparency” and “Hardware encoding” show a tip on hover. “Remove audio” stays without one.
+- macOS: a file that did not shrink is marked “Not smaller” instead of “Original kept”. The row says there is no new file.
+
 ## [0.5.1] - 2026-10-21
 
 ## [0.5.0] - 2026-10-21
