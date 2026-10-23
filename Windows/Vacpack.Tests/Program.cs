@@ -129,6 +129,29 @@ await Check("Strong-compression settings are validated", async () =>
     await Throws<ArgumentException>(() => { new CompressionSettings { TargetSizeMb = double.NaN }.Validate(); return Task.CompletedTask; });
     new CompressionSettings { TargetSizeMb = 10, AudioKbps = 24, VideoCodec = VideoCodec.Vvc }.Validate();
 });
+await Check("A failed FFmpeg run is explained: what happened, what to try, the exit code", () =>
+{
+    Loc.Use("en");
+    var silent = FfmpegErrors.Explain(-1073741819, "");
+    Require(silent.Contains("stopped without a message") && silent.Contains("0xC0000005") && silent.Contains("What to try:") && silent.Contains("no message"));
+    Require(silent.Split('\n').Count(line => line.StartsWith('•')) == 3);
+    var encoder = FfmpegErrors.Explain(1, "Unknown encoder 'libsvtav1'");
+    Require(encoder.Contains("no encoder") && encoder.Contains("libsvtav1") && encoder.Contains("Standard"));
+    Require(FfmpegErrors.Explain(1, "av_interleaved_write_frame(): No space left on device").Contains("disk space"));
+    Require(FfmpegErrors.Explain(1, "Permission denied").Contains("another save folder"));
+    Require(FfmpegErrors.Explain(183, "moov atom not found\nError opening input").Contains("damaged"));
+    var other = FfmpegErrors.Explain(1, "something odd happened", "C:\\log.txt");
+    Require(other.Contains("could not process") && other.Contains("something odd happened") && other.Contains("C:\\log.txt") && other.Contains("code 1"));
+    return Task.CompletedTask;
+});
+await Check("The failure log keeps the command, the exit code and FFmpeg's words", () =>
+{
+    var path = FfmpegErrors.WriteLog("C:\\ffmpeg\\ffmpeg.exe", ["-i", "in put.mp4", "out.mp4"], 1, "boom", "progress=end");
+    Require(path is not null);
+    var text = File.ReadAllText(path!);
+    Require(text.Contains("Exit code: 1") && text.Contains("\"in put.mp4\"") && text.Contains("boom"));
+    return Task.CompletedTask;
+});
 await Check("HDR and incompatible alpha are rejected before encoding", async () =>
 {
     await Throws<NotSupportedException>(() => Task.FromResult(EncoderCommands.Build("a.mp4", "b.mp4", MediaKind.Video, info with { IsHdr = true }, new())));

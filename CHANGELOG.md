@@ -4,6 +4,12 @@ Notable changes to Vacpack. The format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-10-23
+
+### Changed
+
+- Windows: a failed encode now explains itself. “Details” says what happened (FFmpeg stopped without a message, no such encoder in this build, no disk space, no access to the folder, a damaged file, out of memory), up to three things to try and FFmpeg's exit code, instead of a bare “FFmpeg:”. The command and FFmpeg's output of the last failure go to `%LOCALAPPDATA%\Vacpack\logs\last-error.txt`.
+
 ## [0.6.2] - 2026-10-23
 
 ### Fixed

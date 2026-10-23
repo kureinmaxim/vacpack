@@ -432,7 +432,7 @@ public partial class MainWindow : Window
 
     private void ShowItemDetails(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement { DataContext: FileItem file }) MessageBox.Show(this, file.Error ?? file.Details, file.Name, MessageBoxButton.OK, MessageBoxImage.Information);
+        if (sender is FrameworkElement { DataContext: FileItem file }) MessageBox.Show(this, file.Error ?? file.Details, file.Name, MessageBoxButton.OK, file.HasError ? MessageBoxImage.Warning : MessageBoxImage.Information);
         e.Handled = true;
     }
 

@@ -65,7 +65,12 @@ public sealed class CompressionEngine(ToolLocator? tools = null, ProcessRunner? 
                         && double.TryParse(line[12..], NumberStyles.Float, CultureInfo.InvariantCulture, out var microseconds))
                         progress?.Report(Math.Clamp(microseconds / 1000000 / info.Duration, 0, .98)); // restarts on a retry
                 }, timeout: settings.VideoCodec == VideoCodec.Default ? null : TimeSpan.FromHours(6)).ConfigureAwait(false);
-                if (result.ExitCode != 0) throw new InvalidDataException("FFmpeg: " + ErrorTail(result.StandardError));
+                if (result.ExitCode != 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var log = FfmpegErrors.WriteLog(ffmpeg, command.Arguments, result.ExitCode, result.StandardError, result.StandardOutput);
+                    throw new InvalidDataException(FfmpegErrors.Explain(result.ExitCode, result.StandardError, log));
+                }
                 cancellationToken.ThrowIfCancellationRequested();
                 outputBytes = new FileInfo(staged).Length;
                 if (outputBytes == 0) throw new InvalidDataException(Loc.T("Кодер создал пустой файл."));

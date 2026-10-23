@@ -12,7 +12,7 @@ settings:
     SWIFT_VERSION: "6.0"
     # Release version, MAJOR.MINOR.PATCH, and its date: the source of truth.
     # Change both only with scripts/update_version.py (VERSION_MANAGEMENT.md).
-    MARKETING_VERSION: "0.6.2"
+    MARKETING_VERSION: "0.6.3"
     VACPACK_RELEASE_DATE: "23.10.2026"
     CURRENT_PROJECT_VERSION: "1"  # scripts/package.sh stamps a date.time build instead
     # The commit a build came from and when it was pushed, for the About panel (set by package.sh).
