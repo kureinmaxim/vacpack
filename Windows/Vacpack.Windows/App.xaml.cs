@@ -21,6 +21,14 @@ public partial class App : Application
                 window.ShowInTaskbar = false;
                 var arguments = e.Args.Skip(2).ToList();
                 var compress = arguments.Remove("--compress");
+                var advanced = arguments.Remove("--advanced"); // open the Advanced and Strong compression blocks
+                var scaleArgument = arguments.FirstOrDefault(argument => argument.StartsWith("--scale=", StringComparison.Ordinal));
+                var scale = 1;
+                if (scaleArgument is not null)
+                {
+                    scale = int.TryParse(scaleArgument[8..], out var parsedScale) && parsedScale is >= 1 and <= 4 ? parsedScale : throw new ArgumentException("Invalid snapshot scale.");
+                    arguments.Remove(scaleArgument);
+                }
                 var sizeArgument = arguments.FirstOrDefault(argument => argument.StartsWith("--size=", StringComparison.Ordinal));
                 if (sizeArgument is not null)
                 {
@@ -32,6 +40,7 @@ public partial class App : Application
                 }
                 window.Show();
                 window.AddPaths(arguments);
+                if (advanced) window.ShowAdvanced();
                 if (compress) await window.CompressAsync();
                 await window.WaitForThumbnailsAsync();
                 await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
@@ -46,7 +55,7 @@ public partial class App : Application
                     context.DrawRectangle(new VisualBrush(content), null,
                         new Rect(content.Margin.Left, content.Margin.Top, content.ActualWidth, content.ActualHeight));
                 }
-                var bitmap = new RenderTargetBitmap((int)width, (int)height, 96, 96, PixelFormats.Pbgra32);
+                var bitmap = new RenderTargetBitmap((int)width * scale, (int)height * scale, 96 * scale, 96 * scale, PixelFormats.Pbgra32); // scale 2 = a sharp picture for the README
                 bitmap.Render(drawing);
                 var encoder = new PngBitmapEncoder();
                 encoder.Frames.Add(BitmapFrame.Create(bitmap));

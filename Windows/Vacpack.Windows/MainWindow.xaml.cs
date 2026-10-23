@@ -205,6 +205,14 @@ public partial class MainWindow : Window
         await CompressAsync();
     }
 
+    /// <summary>For snapshots: open the Advanced block and the Strong compression block inside it.</summary>
+    public void ShowAdvanced()
+    {
+        AdvancedExpander.IsExpanded = true;
+        if (ExperimentalOptions.Visibility == Visibility.Visible) ExperimentalOptions.IsExpanded = true;
+        UpdateLayout();
+    }
+
     public async Task CompressAsync()
     {
         if (cancellation is not null || tools.Find("ffmpeg") is null || tools.Find("ffprobe") is null) return;

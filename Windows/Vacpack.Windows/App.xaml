@@ -30,7 +30,7 @@
    <Setter Property="Foreground" Value="#3A2208" /><Setter Property="FontWeight" Value="SemiBold" />
   </Style>
   <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-   <Setter Property="Width" Value="28" /><Setter Property="MinHeight" Value="28" /><Setter Property="Padding" Value="6" />
+   <Setter Property="Width" Value="28" /><Setter Property="MinHeight" Value="28" /><Setter Property="Padding" Value="3" />
    <Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" />
   </Style>
   <Style x:Key="LinkButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
