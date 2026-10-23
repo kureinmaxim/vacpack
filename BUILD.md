@@ -39,7 +39,26 @@ SDK и системные библиотеки; UI — WPF. Версия чит�
 .\scripts\windows.ps1 -Mode check -ToolsDirectory 'C:\ffmpeg\bin' -RequireMediaTests
 ```
 
-`check` собирает WPF, запускает 27 проверок движка, 8 проверок миниатюр и снимок
+### Режимы `windows.ps1`
+
+Режим задаётся параметром `-Mode`. Допустимы ровно четыре значения, и PowerShell
+проверяет их строго (по `ValidateSet`): сокращать нельзя, опечатка вроде `installe`
+вместо `installer` даёт ошибку `Cannot validate argument on parameter 'Mode'`.
+Без `-Mode` выполняется `check`. Регистр не важен.
+
+| Режим | Что делает | Результат | Что нужно |
+|---|---|---|---|
+| `check` (по умолчанию) | собирает приложение и тесты, запускает проверки движка и миниатюр, рисует снимок окна | `.build\windows-ui-check.png`; код возврата 0 = всё в порядке | .NET 8 SDK; FFmpeg для медиа-проверок |
+| `run` | собирает Debug и запускает окно | окно приложения | .NET 8 SDK; FFmpeg (путь `-ToolsDirectory`, `VACPACK_TOOLS` или выбор в окне) |
+| `package` | публикует self-contained папку `win-x64` с .NET внутри | `.build\windows\Vacpack\Vacpack.exe` и соседние файлы; `-DestinationDirectory` меняет папку | .NET 8 SDK; nuget.org при первом получении runtime |
+| `installer` | делает `package` в промежуточную папку `.build\windows\installer-staging` и собирает из неё установщик Inno Setup | `.build\windows\Vacpack-Setup-X.Y.Z.exe`; версия берётся из `project.yml` | всё из `package` и [Inno Setup 6](https://jrsoftware.org/isdl.php) |
+
+Прочие параметры: `-ToolsDirectory` (папка с `ffmpeg.exe` и `ffprobe.exe`),
+`-RequireMediaTests` (пропуск медиа-проверок считается ошибкой; для `check`),
+`-DestinationDirectory` (для `package` — куда публиковать результат; для `installer` — промежуточная папка, сам установщик всегда лежит в `.build\windows`),
+`-RuntimeVersion` (версия .NET runtime, по умолчанию `8.0.32`).
+
+`check` собирает WPF, запускает 35 проверок движка, 8 проверок миниатюр и снимок
 окна с заполненной очередью. Проверяются фото/GIF, кадр короткого видео, EXIF-поворот,
 кэш, отсутствие блокировки исходника и отказ миниатюры без отказа сжатия.
 Для снимка нужен рабочий стол Windows. Без `-RequireMediaTests` и без FFmpeg
@@ -238,6 +257,12 @@ killall Dock
 ```
 
 **macOS: сжатый файл не появился, в строке «not smaller, so no new file»** — так и задумано: результат вышел не меньше исходника, и оригинал оставлен. Попробуйте уровень качества ниже или меньшее разрешение.
+
+**Windows: `Cannot validate argument on parameter 'Mode'. The argument "installe" does not belong to the set "check;run;package;installer"`** — опечатка в имени режима. Допустимы только `check`, `run`, `package` и `installer`, целиком (см. «Режимы `windows.ps1`»). Правильная команда: `.\scripts\windows.ps1 -Mode installer`.
+
+**Windows: `Install Inno Setup 6: https://jrsoftware.org/isdl.php`** — режиму `installer` нужен Inno Setup 6; скрипт ищет `ISCC.exe` в `Program Files (x86)\Inno Setup 6`, `Program Files\Inno Setup 6` и `%LOCALAPPDATA%\Programs\Inno Setup 6`. Установите его и повторите команду; режим `package` Inno Setup не требует.
+
+**Windows: `…windows.ps1 не загружен… выполнение сценариев отключено` (`PSSecurityException`, `UnauthorizedAccess`)** — скрипт запущен в Windows PowerShell 5.1 (`powershell.exe`), где политика выполнения запрещает локальные сценарии. Запускайте в `pwsh` (PowerShell 7), как и остальные Windows-скрипты, либо разрешите сценарии только для этого окна: `Set-ExecutionPolicy -Scope Process Bypass`.
 
 **Windows: `Release archive is incomplete`** — релиз собирался во встроенном Windows PowerShell 5.1. Его `Compress-Archive` записывает имена в ZIP как `Vacpack\BUILD.json`, а проверка ищет `Vacpack/BUILD.json`. Запускайте `scripts/release-windows.ps1` в `pwsh`.
 

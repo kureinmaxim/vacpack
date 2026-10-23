@@ -48,17 +48,34 @@ public sealed class CompressionEngine(ToolLocator? tools = null, ProcessRunner? 
         var staged = Path.Combine(directory, ".vacpack-" + Guid.NewGuid().ToString("N") + extension);
         try
         {
-            var command = EncoderCommands.Build(input, staged, kind, info, settings);
-            var result = await runner.RunAsync(ffmpeg, command.Arguments, cancellationToken, outputLine: line =>
+            // A target size is met by bitrate: encode, measure, and if the file came out too big try
+            // again with a lower bitrate (at most four tries; every one is a full encode).
+            var targetBytes = settings.TargetSizeMb > 0 && kind == MediaKind.Video && settings.VideoOutput < VideoOutput.Gif
+                ? (long)(settings.TargetSizeMb * 1024 * 1024) : 0;
+            var tries = targetBytes > 0 ? 4 : 1;
+            var kbps = targetBytes > 0 ? EncoderCommands.TargetVideoKbps(info, settings) : null;
+            EncodingCommand command;
+            long outputBytes;
+            for (var attempt = 0; ; attempt++)
             {
-                if (info.Duration > 0 && line.StartsWith("out_time_us=", StringComparison.Ordinal)
-                    && double.TryParse(line[12..], NumberStyles.Float, CultureInfo.InvariantCulture, out var microseconds))
-                    progress?.Report(Math.Clamp(microseconds / 1000000 / info.Duration, 0, .98));
-            }).ConfigureAwait(false);
-            if (result.ExitCode != 0) throw new InvalidDataException("FFmpeg: " + ErrorTail(result.StandardError));
-            cancellationToken.ThrowIfCancellationRequested();
-            var outputBytes = new FileInfo(staged).Length;
-            if (outputBytes == 0) throw new InvalidDataException(Loc.T("Кодер создал пустой файл."));
+                command = EncoderCommands.Build(input, staged, kind, info, settings, kbps);
+                var result = await runner.RunAsync(ffmpeg, command.Arguments, cancellationToken, outputLine: line =>
+                {
+                    if (info.Duration > 0 && line.StartsWith("out_time_us=", StringComparison.Ordinal)
+                        && double.TryParse(line[12..], NumberStyles.Float, CultureInfo.InvariantCulture, out var microseconds))
+                        progress?.Report(Math.Clamp(microseconds / 1000000 / info.Duration, 0, .98)); // restarts on a retry
+                }, timeout: settings.VideoCodec == VideoCodec.Default ? null : TimeSpan.FromHours(6)).ConfigureAwait(false);
+                if (result.ExitCode != 0) throw new InvalidDataException("FFmpeg: " + ErrorTail(result.StandardError));
+                cancellationToken.ThrowIfCancellationRequested();
+                outputBytes = new FileInfo(staged).Length;
+                if (outputBytes == 0) throw new InvalidDataException(Loc.T("Кодер создал пустой файл."));
+                if (targetBytes == 0 || outputBytes <= targetBytes) break;
+                if (attempt == tries - 1)
+                    throw new InvalidDataException(Loc.T("Не удалось уложиться в {0} МБ: получилось {1} МБ. Уменьшите разрешение или частоту кадров.",
+                        settings.TargetSizeMb.ToString("0.#", CultureInfo.CurrentCulture), (outputBytes / 1048576.0).ToString("0.#", CultureInfo.CurrentCulture)));
+                kbps = EncoderCommands.NextVideoKbps(info, settings, kbps!.Value, outputBytes);
+                File.Delete(staged); // FFmpeg runs with -n and would refuse to overwrite it
+            }
             await VerifyAsync(ffprobe, staged, command, info, kind, cancellationToken).ConfigureAwait(false);
             original.Refresh();
             if (!original.Exists || original.Length != originalBytes || original.LastWriteTimeUtc != modified)

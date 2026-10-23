@@ -25,12 +25,58 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        FitToScreen();
         LanguageBox.SelectedItem = LanguageBox.Items.Cast<ComboBoxItem>().First(item => (string)item.Tag == Loc.Language);
         initialized = true;
         FileGrid.ItemsSource = files;
         var version = Assembly.GetExecutingAssembly().GetName().Version;
         VersionText.Text = $"{version?.ToString(3)} · Windows";
         Refresh();
+    }
+
+    private double compactHeight, grownHeight;
+    private bool wasEmpty = true;
+
+    /// <summary>
+    /// The window starts small: with nothing in the queue there is only a drop target and the settings.
+    /// The size follows the monitor's work area (in device-independent units, so the display scale is
+    /// already counted), kept between a compact minimum and maximum and never larger than the screen.
+    /// </summary>
+    private void FitToScreen()
+    {
+        var area = SystemParameters.WorkArea;
+        Width = Math.Min(Math.Clamp(area.Width * 0.34, 700, 800), area.Width - 24);
+        compactHeight = Math.Min(Math.Clamp(area.Height * 0.52, 560, 640), area.Height - 24);
+        Height = compactHeight;
+        MinWidth = Math.Min(MinWidth, Width);
+        MinHeight = Math.Min(MinHeight, Height);
+    }
+
+    /// <summary>
+    /// The first files make the window roomier, so the list has space; emptying the queue gives it back
+    /// (only if the user has not resized it in the meantime). A maximized window is left alone.
+    /// </summary>
+    private void FitToQueue(bool empty)
+    {
+        var becameFilled = wasEmpty && !empty;
+        var becameEmpty = !wasEmpty && empty;
+        wasEmpty = empty;
+        if (WindowState != WindowState.Normal || !initialized) return;
+        var area = SystemParameters.WorkArea;
+        if (becameFilled)
+        {
+            var width = Math.Min(Math.Clamp(area.Width * 0.36, 720, 860), area.Width - 24);
+            var height = Math.Min(Math.Clamp(area.Height * 0.64, 600, 800), area.Height - 24);
+            if (Width < width) Width = width;
+            if (Height < height) { Height = height; grownHeight = height; }
+            Left = Math.Clamp(Left, area.Left, Math.Max(area.Left, area.Right - Width));
+            Top = Math.Clamp(Top, area.Top, Math.Max(area.Top, area.Bottom - Height));
+        }
+        else if (becameEmpty && grownHeight > 0 && Math.Abs(Height - grownHeight) < 1)
+        {
+            Height = compactHeight;
+            grownHeight = 0;
+        }
     }
 
     public void AddPaths(IEnumerable<string> paths)
@@ -164,11 +210,20 @@ public partial class MainWindow : Window
         if (cancellation is not null || tools.Find("ffmpeg") is null || tools.Find("ffprobe") is null) return;
         var jobs = files.Where(file => file.Ready).ToArray();
         if (jobs.Length == 0) return;
+        var targetMb = 0.0;
+        if (TargetBox.IsChecked == true && ExperimentalOptions.Visibility == Visibility.Visible
+            && !double.TryParse(TargetMbBox.Text.Trim().Replace(',', '.'), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out targetMb))
+        {
+            StatusText.Text = Loc.T("Введите целевой размер в МБ, например 10.");
+            return;
+        }
         var settings = new CompressionSettings
         {
             Quality = (Quality)QualityBox.SelectedIndex, ImageOutput = (ImageOutput)ImageFormatBox.SelectedIndex,
             VideoOutput = (VideoOutput)VideoFormatBox.SelectedIndex, MaxLongEdge = SelectedNumber(SizeBox),
             MaxVideoFps = SelectedNumber(VideoFpsBox), GifFps = SelectedNumber(GifFpsBox),
+            VideoCodec = (VideoCodec)CodecBox.SelectedIndex, TargetSizeMb = targetMb, AudioKbps = SelectedNumber(AudioBox),
+            Grayscale = GrayBox.IsChecked == true, Denoise = DenoiseBox.IsChecked == true, DropDuplicateFrames = DedupBox.IsChecked == true,
             RemoveAudio = RemoveAudioBox.IsChecked == true, SpeechAudio = SpeechBox.IsChecked == true,
             KeepFileDates = DatesBox.IsChecked == true, OutputDirectory = outputDirectory
         };
@@ -217,6 +272,7 @@ public partial class MainWindow : Window
         ToolsBanner.Visibility = ready ? Visibility.Collapsed : Visibility.Visible;
         ToolsText.Text = Loc.T("Для сжатия нужны ffmpeg.exe и ffprobe.exe. Выберите папку с ними или поместите их в tools рядом с приложением.");
         CountText.Text = files.Count.ToString();
+        FitToQueue(files.Count == 0);
         EmptyState.Visibility = files.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         FileGrid.Visibility = files.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
         SettingsPanel.IsEnabled = !busy;
@@ -234,6 +290,43 @@ public partial class MainWindow : Window
         QueueHint.Text = files.Count == 0 ? Loc.T("Фото, видео и GIF") : Loc.T("Всего {0} · исходники сохранятся", FileItem.FormatBytes(files.Sum(file => file.InputBytes)));
         RefreshContext();
         RefreshSummary();
+    }
+
+    /// <summary>The block is long: when it opens, scroll the settings so that its title is at the top.</summary>
+    private void ExperimentalExpanded(object sender, RoutedEventArgs e)
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            var top = ExperimentalOptions.TransformToAncestor(SettingsScroll).Transform(new Point(0, 0)).Y;
+            SettingsScroll.ScrollToVerticalOffset(Math.Max(0, SettingsScroll.VerticalOffset + top - 4));
+        }, System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    private void TargetToggled(object sender, RoutedEventArgs e)
+    {
+        if (initialized) TargetMbBox.IsEnabled = TargetBox.IsChecked == true;
+    }
+
+    /// <summary>A preset sets the sliders it stands for; the user can still change each one.</summary>
+    private void PresetChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!initialized || PresetBox.SelectedIndex <= 0) return;
+        // long side, frame rate, audio kbit/s, quality level
+        var (side, fps, audio, quality) = PresetBox.SelectedIndex switch
+        {
+            1 => (640, 15, 32, (int)Quality.Medium),
+            2 => (480, 10, 16, (int)Quality.Acceptable),
+            _ => (320, 6, 8, (int)Quality.Acceptable)
+        };
+        Pick(SizeBox, side); Pick(VideoFpsBox, fps); Pick(AudioBox, audio);
+        QualityBox.SelectedIndex = quality;
+        DenoiseBox.IsChecked = true; DedupBox.IsChecked = true;
+    }
+
+    private static void Pick(ComboBox box, int tag)
+    {
+        foreach (var item in box.Items.Cast<ComboBoxItem>())
+            if (item.Tag?.ToString() == tag.ToString(System.Globalization.CultureInfo.InvariantCulture)) { box.SelectedItem = item; return; }
     }
 
     private void SettingsChanged(object sender, SelectionChangedEventArgs e)
@@ -260,6 +353,8 @@ public partial class MainWindow : Window
         Grid.SetColumnSpan(VideoFpsOptions, gifFps ? 1 : 3);
         Grid.SetColumnSpan(GifFpsOptions, videoFps ? 1 : 3);
         FpsOptions.Visibility = videoFps || gifFps ? Visibility.Visible : Visibility.Collapsed;
+        // Strong compression is for video that stays video: not for sound-only or GIF output.
+        ExperimentalOptions.Visibility = (empty || videos) && VideoFormatBox.SelectedIndex < (int)VideoOutput.Gif ? Visibility.Visible : Visibility.Collapsed;
         RemoveAudioBox.Visibility = videos && !audioOnly && !videoGif ? Visibility.Visible : Visibility.Collapsed;
         SpeechBox.Visibility = videos && audioOnly ? Visibility.Visible : Visibility.Collapsed;
         var pngOnly = images && !videos && !gifs && (ImageFormatBox.SelectedIndex == (int)ImageOutput.Png

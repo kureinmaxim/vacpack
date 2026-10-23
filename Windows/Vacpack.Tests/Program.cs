@@ -76,6 +76,59 @@ await Check("Arguments preserve Unicode paths and cap bitrate under ru-RU cultur
     finally { CultureInfo.CurrentCulture = before; }
     return Task.CompletedTask;
 });
+await Check("Strong compression: codec, filters in a fixed order, one Opus track", () =>
+{
+    var settings = new CompressionSettings
+    {
+        VideoOutput = VideoOutput.Mp4, VideoCodec = VideoCodec.Av1, MaxLongEdge = 640, MaxVideoFps = 12,
+        Denoise = true, Grayscale = true, DropDuplicateFrames = true, AudioKbps = 16
+    };
+    var command = EncoderCommands.Build("in.mp4", "out.mp4", MediaKind.Video, info, settings);
+    Require(command.Extension == ".mp4" && command.Width == 640 && command.Height == 360);
+    Require(ValueAfter(command.Arguments, "-vf") == "fps=12,scale=640:360:flags=lanczos,setsar=1,hqdn3d=3:2:6:4,hue=s=0,mpdecimate");
+    Require(ValueAfter(command.Arguments, "-fps_mode") == "vfr");
+    Require(ValueAfter(command.Arguments, "-c:v") == "libsvtav1" && ValueAfter(command.Arguments, "-crf") == "38");
+    Require(ValueAfter(command.Arguments, "-c:a") == "libopus" && ValueAfter(command.Arguments, "-b:a") == "16k");
+    Require(ValueAfter(command.Arguments, "-ac") == "1" && command.Arguments.Contains("0:a:0?") && !command.Arguments.Contains("0:a?"));
+    return Task.CompletedTask;
+});
+await Check("HEVC is tagged for Apple players, VVC goes to Matroska as 10-bit, WebM only takes AV1", async () =>
+{
+    var hevc = EncoderCommands.Build("in.mp4", "out.mp4", MediaKind.Video, info, new() { VideoOutput = VideoOutput.Mp4, VideoCodec = VideoCodec.Hevc });
+    Require(ValueAfter(hevc.Arguments, "-c:v") == "libx265" && ValueAfter(hevc.Arguments, "-tag:v") == "hvc1" && ValueAfter(hevc.Arguments, "-crf") == "28");
+    var vvc = EncoderCommands.Build("in.mp4", "out.mkv", MediaKind.Video, info, new() { VideoOutput = VideoOutput.Mp4, VideoCodec = VideoCodec.Vvc });
+    Require(vvc.Extension == ".mkv" && ValueAfter(vvc.Arguments, "-c:v") == "libvvenc" && ValueAfter(vvc.Arguments, "-pix_fmt") == "yuv420p10le"
+        && ValueAfter(vvc.Arguments, "-qp") == "34");
+    var av1 = EncoderCommands.Build("in.mp4", "out.webm", MediaKind.Video, info, new() { VideoOutput = VideoOutput.WebM, VideoCodec = VideoCodec.Av1 });
+    Require(av1.Extension == ".webm" && ValueAfter(av1.Arguments, "-c:v") == "libsvtav1");
+    await Throws<NotSupportedException>(() => Task.FromResult(EncoderCommands.Build("in.mp4", "out.webm", MediaKind.Video, info,
+        new() { VideoOutput = VideoOutput.WebM, VideoCodec = VideoCodec.Hevc })));
+    await Throws<NotSupportedException>(() => Task.FromResult(EncoderCommands.Build("in.webm", "out.mp4", MediaKind.Video, info with { HasAlpha = true, Codec = "vp9" },
+        new() { VideoOutput = VideoOutput.WebM, VideoCodec = VideoCodec.Av1 })));
+});
+await Check("Target size: bitrate leaves room for audio, retries scale it, impossible targets are refused", async () =>
+{
+    var clip = info with { Duration = 100 };
+    var settings = new CompressionSettings { VideoOutput = VideoOutput.Mp4, TargetSizeMb = 1 };
+    Require(EncoderCommands.AudioPlan(clip, settings) is (16, true)); // about 8% of the budget, at least 16 kbit/s
+    var kbps = EncoderCommands.TargetVideoKbps(clip, settings);
+    Require(kbps == 58);
+    var command = EncoderCommands.Build("in.mp4", "out.mp4", MediaKind.Video, clip, settings, kbps);
+    Require(ValueAfter(command.Arguments, "-b:v") == "58k" && ValueAfter(command.Arguments, "-maxrate") == "72k" && !command.Arguments.Contains("-crf"));
+    Require(EncoderCommands.NextVideoKbps(clip, settings, 100, 2 * 1048576) == 39); // steeper than the 2x ratio
+    var webm = EncoderCommands.Build("in.mp4", "out.webm", MediaKind.Video, clip, settings with { VideoOutput = VideoOutput.WebM }, kbps);
+    Require(ValueAfter(webm.Arguments, "-b:v") == "58k" && !webm.Arguments.Contains("-crf"));
+    Require(EncoderCommands.TargetVideoKbps(clip, new CompressionSettings()) is null);
+    await Throws<InvalidDataException>(() => Task.FromResult(EncoderCommands.TargetVideoKbps(info with { Duration = 3600 }, settings with { TargetSizeMb = 0.05 })));
+    await Throws<NotSupportedException>(() => Task.FromResult(EncoderCommands.TargetVideoKbps(info with { Duration = 0 }, settings)));
+});
+await Check("Strong-compression settings are validated", async () =>
+{
+    await Throws<ArgumentException>(() => { new CompressionSettings { TargetSizeMb = 0.01 }.Validate(); return Task.CompletedTask; });
+    await Throws<ArgumentException>(() => { new CompressionSettings { AudioKbps = 400 }.Validate(); return Task.CompletedTask; });
+    await Throws<ArgumentException>(() => { new CompressionSettings { TargetSizeMb = double.NaN }.Validate(); return Task.CompletedTask; });
+    new CompressionSettings { TargetSizeMb = 10, AudioKbps = 24, VideoCodec = VideoCodec.Vvc }.Validate();
+});
 await Check("HDR and incompatible alpha are rejected before encoding", async () =>
 {
     await Throws<NotSupportedException>(() => Task.FromResult(EncoderCommands.Build("a.mp4", "b.mp4", MediaKind.Video, info with { IsHdr = true }, new())));
@@ -239,6 +292,37 @@ if (tools.Find("ffmpeg") is { } ffmpeg && tools.Find("ffprobe") is { } ffprobe)
         var result = await engine.CompressAsync(video, new() { VideoOutput = VideoOutput.Mp4, RemoveAudio = true });
         Require(result.Output is not null && (await Probe(result.Output!)).AudioCodecs.Count == 0);
     });
+    var encoders = (await runner.RunAsync(ffmpeg, ["-hide_banner", "-encoders"])).StandardOutput;
+    var fullBytes = new FileInfo(video).Length;
+    foreach (var (codec, name, encoder) in new[] { (VideoCodec.Av1, "av1", "libsvtav1"), (VideoCodec.Hevc, "hevc", "libx265") })
+    {
+        if (!encoders.Contains(encoder)) { Console.WriteLine($"SKIP: {encoder} is not in this FFmpeg"); skipped++; continue; }
+        await Check($"{name.ToUpperInvariant()} reaches a target size and keeps the duration", async () =>
+        {
+            var result = await engine.CompressAsync(video, new() { VideoOutput = VideoOutput.Mp4, VideoCodec = codec, TargetSizeMb = 0.3, MaxLongEdge = 240 });
+            Require(result.Output is not null && result.OutputBytes <= 0.3 * 1048576 && result.OutputBytes < fullBytes);
+            var output = await Probe(result.Output!);
+            Require(output.Codec == name && Math.Abs(output.Duration - 2) < .2 && Path.GetExtension(result.Output!) == ".mp4");
+        });
+    }
+    await Check("Default codec with a target size and strong settings: smaller frames, 1 mono Opus track", async () =>
+    {
+        var result = await engine.CompressAsync(video, new()
+        {
+            VideoOutput = VideoOutput.Mp4, TargetSizeMb = 0.08, MaxLongEdge = 160, MaxVideoFps = 10,
+            Grayscale = true, Denoise = true, DropDuplicateFrames = true, AudioKbps = 16
+        });
+        Require(result.Output is not null && result.OutputBytes <= 0.08 * 1048576);
+        var output = await Probe(result.Output!);
+        Require(output.Width == 160 && output.Height == 120 && output.Fps <= 10.1 && output.AudioCodecs.SequenceEqual(new[] { "opus" }));
+    });
+    if (encoders.Contains("libvvenc"))
+        await Check("H.266 / VVC encodes into Matroska", async () =>
+        {
+            var result = await engine.CompressAsync(video, new() { VideoOutput = VideoOutput.Mp4, VideoCodec = VideoCodec.Vvc, MaxLongEdge = 128, MaxVideoFps = 8 });
+            Require(result.Output is not null && Path.GetExtension(result.Output!) == ".mkv");
+            Require((await Probe(result.Output!)).Codec == "vvc");
+        });
     await Check("Cancelling the compression pipeline removes staging and retains input", async () =>
     {
         using var cancellation = new CancellationTokenSource();

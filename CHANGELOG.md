@@ -4,6 +4,27 @@ Notable changes to Vacpack. The format follows [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-10-23
+
+### Fixed
+
+- Windows: the folder icons (next to the list rows and the output folder) are no longer clipped at the edge.
+
+## [0.6.1] - 2026-10-23
+
+## [0.6.0] - 2026-10-23
+
+### Added
+
+- Windows: the window opens much smaller and narrower (about 700 × 560 device-independent units on a typical monitor; the size follows the work area) and grows by itself when the first files are added, giving the space back when the queue is emptied. The settings panel scrolls with a thin scroll bar when a long block such as Strong compression is open, instead of shrinking the text; the list columns are narrower.
+- Windows: **strong compression** (experimental), Advanced ▸ Strong compression, for video. Modern video codecs: AV1 (SVT-AV1), HEVC (x265) and H.266 / VVC (vvenc, very slow). “Fit into N MB” picks the bitrate from the duration and retries up to four times until the file fits. Presets Strong / Maximum / Extreme (long side 640–320 px, 15–6 frames/s, mono Opus sound at 32–8 kbps), plus black and white, noise smoothing and dropping repeated frames. The size list now goes down to 320 px and the frame-rate list to 6. How it works: [docs/STRONG_COMPRESSION.md](docs/STRONG_COMPRESSION.md); macOS is a task there.
+
+## [0.5.3] - 2026-10-23
+
+### Changed
+
+- Windows: a more compact window. The header, margins, buttons, list rows and the drop area are smaller, the settings panel is narrower and has no scroll bar: if it does not fit, its content shrinks instead. The first window size follows the monitor's work area (about 56% by 68%, within 860–1240 by 580–840 device-independent units), and the minimum size is 820 × 580.
+
 ## [0.5.2] - 2026-10-22
 
 ### Changed
